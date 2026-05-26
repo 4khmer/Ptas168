@@ -1,24 +1,8 @@
-import { z } from 'zod'
-
-export const createFloorSchema = z
-  .object({
-    name: z.string().min(1).max(120),
-    remark: z.string().max(500).nullable().optional(),
-  })
-  .strict()
-
-export const updateFloorSchema = z
-  .object({
-    name: z.string().min(1).max(120).optional(),
-    remark: z.string().max(500).nullable().optional(),
-  })
-  .strict()
-
-export const listFloorsQuery = z
-  .object({
-    buildingId: z.string().uuid().optional(),
-  })
-  .strict()
-
-export type CreateFloorInput = z.infer<typeof createFloorSchema>
-export type UpdateFloorInput = z.infer<typeof updateFloorSchema>
+// Schemas + types live in @ptas/contracts; this file re-exports for module-local imports.
+export {
+  createFloorSchema,
+  updateFloorSchema,
+  listFloorsQuery,
+  type CreateFloorInput,
+  type UpdateFloorInput,
+} from '@ptas/contracts'

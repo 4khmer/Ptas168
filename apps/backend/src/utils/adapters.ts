@@ -1,10 +1,29 @@
 // Convert Prisma rows to the frontend-expected response shape.
 // Field names mirror the frontend store exactly.
+//
+// All DTO TYPES live in @ptas/contracts (the wire-format source of truth).
+// This file imports them, re-exports for convenience, and holds the runtime
+// row→DTO functions.
 
 import type {
   Building, Floor, Room, Tenant, Contract, ServiceFee, RoomService,
   MeterReading, Invoice, InvoiceLineItem, Notification, User, BankPayment,
 } from '@prisma/client'
+
+import type {
+  BuildingDto, FloorDto, RoomDto, RoomAssetDto,
+  TenantDto, TenantDocumentDto, ContractDto,
+  ServiceFeeDto, RoomServiceDto, MeterReadingDto,
+  InvoiceDto, NotificationDto, UserDto, BankPaymentDto,
+} from '@ptas/contracts'
+
+// Re-export so legacy `import { XxxDto } from '../utils/adapters'` keeps working.
+export type {
+  BuildingDto, FloorDto, RoomDto, RoomAssetDto,
+  TenantDto, TenantDocumentDto, ContractDto,
+  ServiceFeeDto, RoomServiceDto, MeterReadingDto,
+  InvoiceDto, NotificationDto, UserDto, BankPaymentDto,
+}
 
 const dec = (v: { toNumber(): number } | null | undefined): number =>
   v == null ? 0 : v.toNumber()
@@ -14,53 +33,12 @@ const decOrNull = (v: { toNumber(): number } | null | undefined): number | null 
 const toIsoDate = (d: Date | null | undefined): string | null =>
   d ? d.toISOString().slice(0, 10) : null
 
-export interface BuildingDto {
-  id: string
-  name: string
-  remark: string
-}
-
 export function toBuildingDto(b: Building): BuildingDto {
   return { id: b.id, name: b.name, remark: b.remark ?? '' }
 }
 
-export interface FloorDto {
-  id: string
-  buildingId: string
-  name: string
-  remark: string
-}
-
 export function toFloorDto(f: Floor): FloorDto {
   return { id: f.id, buildingId: f.buildingId, name: f.name, remark: f.remark ?? '' }
-}
-
-export interface RoomDto {
-  id: string
-  floorId: string
-  buildingId: string
-  name: string
-  size: string
-  price: number
-  active: boolean
-  occupied: boolean
-  tenantName: string | null
-  canStartBill: boolean
-  dayCounter: number
-  daysInMonth: number
-  dayCounterColor: string | null
-  meterReadingMode: 'manual' | 'auto'
-  assets: RoomAssetDto[]
-  floorName?: string
-  buildingName?: string
-}
-
-export interface RoomAssetDto {
-  id: string
-  name: string
-  notes?: string | null
-  photoUrl?: string | null
-  addedAt: string
 }
 
 export function toRoomDto(
@@ -97,24 +75,6 @@ export function toRoomDto(
   }
 }
 
-export interface TenantDocumentDto {
-  id: string
-  name: string
-  type?: string
-  size?: number
-  dataUrl: string
-  uploadedAt: string
-}
-
-export interface TenantDto {
-  id: string
-  name: string
-  phone: string
-  photo: string | null
-  status: string
-  documents: TenantDocumentDto[]
-}
-
 export function toTenantDto(t: Tenant): TenantDto {
   const docs = Array.isArray(t.documents) ? (t.documents as unknown as TenantDocumentDto[]) : []
   return {
@@ -125,21 +85,6 @@ export function toTenantDto(t: Tenant): TenantDto {
     status: t.status,
     documents: docs,
   }
-}
-
-export interface ContractDto {
-  id: string
-  roomId: string
-  tenantId: string
-  tenantName: string
-  tenantPhone: string
-  startDate: string
-  endDate: string | null
-  baseRent: number
-  securityDeposit: number
-  status: string
-  terminationReason: string | null
-  terminatedAt: string | null
 }
 
 export function toContractDto(c: Contract): ContractDto {
@@ -159,20 +104,6 @@ export function toContractDto(c: Contract): ContractDto {
   }
 }
 
-export interface ServiceFeeDto {
-  id: string
-  name: string
-  icon: string
-  type: 'utility' | 'fixed'
-  serviceType: string
-  defaultRate: number
-  unit: string
-  unitLabel: string
-  canDelete: boolean
-  active: boolean
-  isDefault: boolean
-}
-
 export function toServiceFeeDto(s: ServiceFee): ServiceFeeDto {
   const isUtility = s.serviceType === 'WATER' || s.serviceType === 'ELECTRICITY'
   return {
@@ -188,21 +119,6 @@ export function toServiceFeeDto(s: ServiceFee): ServiceFeeDto {
     active: s.active,
     isDefault: s.isDefault,
   }
-}
-
-export interface RoomServiceDto {
-  id: string
-  roomId: string
-  serviceId: string
-  serviceName: string
-  serviceIcon: string
-  serviceType: string
-  unit: string
-  defaultRate: number
-  effectiveRate: number
-  priceOverride: number | null
-  enabled: boolean
-  assignedAt: string
 }
 
 export function toRoomServiceDto(rs: RoomService & { serviceFee: ServiceFee }): RoomServiceDto {
@@ -224,16 +140,6 @@ export function toRoomServiceDto(rs: RoomService & { serviceFee: ServiceFee }): 
   }
 }
 
-export interface MeterReadingDto {
-  id: string
-  roomId: string
-  serviceType: string
-  recordDate: string
-  recordedByName: string
-  previousReading: number
-  currentReading: number
-}
-
 export function toMeterReadingDto(m: MeterReading): MeterReadingDto {
   return {
     id: m.id,
@@ -244,45 +150,6 @@ export function toMeterReadingDto(m: MeterReading): MeterReadingDto {
     previousReading: dec(m.previousReading),
     currentReading: dec(m.currentReading),
   }
-}
-
-export interface InvoiceDto {
-  id: string
-  invoiceNumber: string
-  roomId: string
-  tenantId: string | null
-  tenantName: string
-  tenantPhone: string | null
-  roomName: string
-  buildingName: string
-  floorName: string
-  billPeriodStart: string
-  billPeriodEnd: string
-  dueDate: string
-  billDays: number
-  daysInMonth: number
-  status: string
-  baseRent: number
-  securityDeposit: number
-  subtotal: number
-  totalAmount: number
-  exchangeRate: number
-  khrAmount: number | null
-  paymentMethod: string | null
-  paidAt: string | null
-  cancelReason: string | null
-  cancelledAt: string | null
-  createdAt: string
-  updatedAt: string
-  lineItems: Array<{
-    id: string
-    lineItemType: string
-    description: string
-    previousReading: number | null
-    currentReading: number | null
-    unitPrice: number | null
-    amount: number
-  }>
 }
 
 export function toInvoiceDto(inv: Invoice & { lineItems: InvoiceLineItem[] }): InvoiceDto {
@@ -326,9 +193,11 @@ export function toInvoiceDto(inv: Invoice & { lineItems: InvoiceLineItem[] }): I
   }
 }
 
-// progress + past dueDate ⇒ overdue (derived, never persisted)
-function deriveDisplayStatus(inv: Invoice): string {
-  if (inv.status === 'paid' || inv.status === 'cancelled') return inv.status
+// progress + past dueDate ⇒ overdue (derived, never persisted).
+// Returns the union member from InvoiceStatusResponse.
+function deriveDisplayStatus(inv: Invoice): InvoiceDto['status'] {
+  if (inv.status === 'paid') return 'paid'
+  if (inv.status === 'cancelled') return 'cancelled'
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
   const due = new Date(inv.dueDate)
@@ -336,38 +205,16 @@ function deriveDisplayStatus(inv: Invoice): string {
   return today > due ? 'overdue' : 'progress'
 }
 
-export interface NotificationDto {
-  id: string
-  type: string
-  title: string
-  body: string
-  ref: string | null
-  read: boolean
-  createdAt: string
-}
-
 export function toNotificationDto(n: Notification): NotificationDto {
   return {
     id: n.id,
-    type: n.type.toLowerCase(),
+    type: n.type.toLowerCase() as NotificationDto['type'],
     title: n.title,
     body: n.body,
     ref: n.ref,
     read: n.read,
     createdAt: n.createdAt.toISOString(),
   }
-}
-
-export interface UserDto {
-  id: string
-  name: string
-  username: string
-  phone: string | null
-  profileImage: string | null
-  role: string
-  status: string
-  via: string
-  createdAt: string
 }
 
 export function toUserDto(u: User): UserDto {
@@ -382,20 +229,6 @@ export function toUserDto(u: User): UserDto {
     via: u.via,
     createdAt: u.createdAt.toISOString(),
   }
-}
-
-export interface BankPaymentDto {
-  id: string
-  bank: string
-  amount: number
-  currency: string
-  senderName: string | null
-  senderAccount: string | null
-  transactionId: string
-  apv: string | null
-  paidAt: string
-  receivedAt: string
-  rawText: string
 }
 
 export function toBankPaymentDto(p: BankPayment): BankPaymentDto {

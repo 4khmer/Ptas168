@@ -1,5 +1,5 @@
-import { z } from 'zod'
-
-export const updateSettingsSchema = z.record(z.string(), z.string())
-
-export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>
+// Schemas + types live in @ptas/contracts; this file re-exports for module-local imports.
+export {
+  updateSettingsSchema,
+  type UpdateSettingsInput,
+} from '@ptas/contracts'

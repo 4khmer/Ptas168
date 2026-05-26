@@ -4,19 +4,11 @@ import { Prisma } from '@prisma/client'
 import { AppError } from '../utils/errors'
 import { env } from '../config/env'
 import { logger } from '../config/logger'
-
-interface ErrorBody {
-  error: {
-    code: string
-    message: string
-    details?: unknown
-    stack?: string
-  }
-}
+import type { ErrorEnvelope, ErrorCode } from '@ptas/contracts'
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   let statusCode = 500
-  let code = 'INTERNAL_ERROR'
+  let code: ErrorCode = 'INTERNAL_ERROR'
   let message = 'An unexpected error occurred'
   let details: unknown
 
@@ -27,7 +19,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     details = err.flatten()
   } else if (err instanceof AppError) {
     statusCode = err.statusCode
-    code = err.code
+    code = err.code as ErrorCode
     message = err.message
     details = err.details
   } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -49,7 +41,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     message = err.message || message
   }
 
-  const body: ErrorBody = { error: { code, message } }
+  const body: ErrorEnvelope = { error: { code, message } }
   if (details !== undefined) body.error.details = details
   if (env.NODE_ENV !== 'production' && err instanceof Error && err.stack) {
     body.error.stack = err.stack
@@ -68,7 +60,8 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 }
 
 export const notFoundHandler: import('express').RequestHandler = (req, res) => {
-  res.status(404).json({
+  const body: ErrorEnvelope = {
     error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.path} not found` },
-  })
+  }
+  res.status(404).json(body)
 }

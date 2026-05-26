@@ -1,12 +1,10 @@
 import jwt, { type SignOptions } from 'jsonwebtoken'
 import { env } from '../config/env'
 import { UnauthorizedError } from './errors'
+import type { JwtPayload } from '@ptas/contracts'
 
-export interface JwtPayload {
-  userId: string
-  role: string
-  telegramId?: string
-}
+// Re-export so existing consumers can keep `import { JwtPayload } from '../utils/jwt'`.
+export type { JwtPayload }
 
 export function signJwt(payload: JwtPayload): string {
   const opts: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'] }

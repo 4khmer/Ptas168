@@ -1,8 +1,2 @@
-import { z } from 'zod'
-
-export const listNotificationsQuery = z
-  .object({
-    size: z.string().regex(/^\d+$/).transform(Number).optional(),
-    onlyUnread: z.string().transform(v => v === 'true').optional(),
-  })
-  .strict()
+// Schemas + types live in @ptas/contracts; this file re-exports for module-local imports.
+export { listNotificationsQuery } from '@ptas/contracts'
