@@ -12,6 +12,8 @@
     "test:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@ptas/sdk": "workspace:*",
+    "@ptas/contracts": "workspace:*",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.344.0",
     "qrcode": "^1.5.4",

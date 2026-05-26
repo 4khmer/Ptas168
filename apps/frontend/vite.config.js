@@ -20,5 +20,14 @@ export default defineConfig(({ mode }) => {
       },
     },
     base: '/Ptas168_Frontend/',
+    // Pre-bundle the workspace SDK + contracts via esbuild so CJS named
+    // exports (e.g. `import { ServiceTypeSchema } from '@ptas/contracts'`)
+    // resolve in the browser. Without this, dev hits "exports is not defined".
+    optimizeDeps: {
+      include: ['@ptas/contracts', '@ptas/sdk'],
+    },
+    ssr: {
+      noExternal: ['@ptas/contracts', '@ptas/sdk'],
+    },
   }
 })

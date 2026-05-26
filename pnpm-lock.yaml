@@ -120,6 +120,12 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@ptas/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@ptas/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       jsqr:
         specifier: ^1.4.0
         version: 1.4.0
@@ -178,6 +184,16 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
+  packages/sdk:
+    dependencies:
+      '@ptas/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       typescript:
         specifier: ^5.6.0
