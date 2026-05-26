@@ -1,6 +1,7 @@
 // Single SDK instance, wired to the browser's localStorage for the JWT.
-// Every api/* module re-exports from this file so legacy import paths
-// (e.g. `import { buildingsApi } from '../api/buildings.js'`) keep working.
+// All callers (Zustand store, pages) import their api/* objects + adapters
+// from this file. The HTTP client, per-domain wrappers, and adapters all
+// live in @ptas/sdk; this file is the consumer-side init + named exports.
 import { createSdk } from '@ptas/sdk'
 
 const TOKEN_KEY = 'pbms_token'

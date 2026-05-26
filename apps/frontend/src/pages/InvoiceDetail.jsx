@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
-import { invoicesApi } from '../api/invoices'
+import { invoicesApi } from '../sdk.js'
 import PageHeader from '../components/layout/PageHeader'
 import Button from '../components/ui/Button'
 import InvoiceQR from '../components/ui/InvoiceQR'

@@ -1,22 +1,13 @@
 import { create } from 'zustand'
 import { resolveInvoiceStatus } from '../lib/billing.js'
 import { getStoredLanguage, persistLanguage } from '../lib/i18n.js'
-import { getToken, setToken } from '../api/client.js'
-import { authApi } from '../api/auth.js'
-import { buildingsApi } from '../api/buildings.js'
-import { floorsApi } from '../api/floors.js'
-import { roomsApi } from '../api/rooms.js'
-import { tenantsApi } from '../api/tenants.js'
-import { contractsApi } from '../api/contracts.js'
-import { roomServicesApi } from '../api/roomServices.js'
-import { meterReadingsApi, groupMeterReadings } from '../api/meterReadings.js'
-import { invoicesApi, adaptInvoice } from '../api/invoices.js'
-import { serviceFeesApi } from '../api/serviceFees.js'
-import { settingsApi, parseInvoiceSettings } from '../api/settings.js'
-import { usersApi } from '../api/users.js'
-import { bankPaymentsApi } from '../api/bankPayments.js'
-import { telegramLinksApi } from '../api/telegramLinks.js'
-import { bankNotificationGroupsApi } from '../api/bankNotificationGroups.js'
+import {
+  getToken, setToken,
+  authApi, buildingsApi, floorsApi, roomsApi, tenantsApi, contractsApi,
+  roomServicesApi, meterReadingsApi, invoicesApi, serviceFeesApi,
+  settingsApi, usersApi, bankPaymentsApi, telegramLinksApi, bankNotificationGroupsApi,
+  groupMeterReadings, adaptInvoice, parseInvoiceSettings,
+} from '../sdk.js'
 
 const DEFAULT_INVOICE_SETTINGS = {
   header: { enabled: true, profileImage: null, bizName: '', tinNo: '', address: '', bizPhone: '' },

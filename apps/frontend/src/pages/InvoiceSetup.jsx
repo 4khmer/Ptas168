@@ -9,7 +9,7 @@ import { formatFullDate } from '../lib/date'
 import { decodeQRFromImage } from '../lib/qr'
 import { parseKHQR } from '../lib/khqr'
 import { resizeImageToBlob } from '../lib/image'
-import { uploadsApi } from '../api/uploads'
+import { uploadsApi } from '../sdk.js'
 import InvoiceQR from '../components/ui/InvoiceQR'
 
 // ── Toggle switch ─────────────────────────────────────────────────────────────
