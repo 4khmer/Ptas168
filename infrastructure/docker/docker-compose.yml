@@ -1,0 +1,74 @@
+# PTAS168 — local development infrastructure
+#
+# Brings up PostgreSQL (primary data store) and Redis (future BullMQ / cache).
+# Ports are bound to 127.0.0.1 so containers are not exposed on the LAN.
+# Volumes are named so data persists across `docker compose down` and is only
+# wiped by `docker compose down -v` (used by the `db:reset` script).
+#
+# Run from the monorepo root via:
+#   pnpm db:up    pnpm db:down    pnpm db:logs    pnpm db:reset
+
+name: ptas168
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ptas168_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ptas168_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # Force a non-localized locale so collation is deterministic across
+      # developer machines and CI.
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Drop *.sql / *.sh files here later to seed first-time DB creation.
+      - ./postgres/initdb.d:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ptas168_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7
+    container_name: ptas168_redis
+    restart: unless-stopped
+    # AOF persistence so queue state survives container restart.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+    name: ptas168_postgres_data
+  redis_data:
+    name: ptas168_redis_data
+
+# Compose v2 creates a default bridge network named `ptas168_default`.
+# Future services (backend, worker, telegram-bot, ai-assistant) can join the
+# same project to reach `postgres` and `redis` by service name.

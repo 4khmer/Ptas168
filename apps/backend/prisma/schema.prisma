@@ -1,0 +1,420 @@
+// Prisma schema for Ptas168 backend
+// Generated from frontend store action signatures (no contract docs available)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Auth / users ───────────────────────────────────────────────────────────
+
+enum UserRole {
+  owner
+  manager
+  staff
+  viewer
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+enum AuthVia {
+  credentials
+  telegram
+}
+
+// Top-level account: owner of the property + invoiced sub-users.
+// Telegram fields populated only when user authenticates via Telegram Mini App.
+model User {
+  id           String     @id @default(uuid())
+  username     String     @unique
+  passwordHash String?
+  fullName     String
+  phone        String?
+  profileImage String?
+  role         UserRole   @default(manager)
+  status       UserStatus @default(active)
+  via          AuthVia    @default(credentials)
+
+  // Telegram fields (nullable, populated only on Telegram login)
+  telegramId    BigInt?  @unique
+  telegramUsername String?
+  firstName     String?
+  lastName      String?
+  languageCode  String?
+  isPremium     Boolean  @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  notifications Notification[]
+
+  @@index([phone])
+  @@map("users")
+}
+
+// ── Property ────────────────────────────────────────────────────────────────
+
+model Building {
+  id        String   @id @default(uuid())
+  name      String
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  floors Floor[]
+  rooms  Room[]
+
+  @@map("buildings")
+}
+
+model Floor {
+  id         String   @id @default(uuid())
+  buildingId String
+  name       String
+  remark     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  rooms    Room[]
+
+  @@index([buildingId])
+  @@map("floors")
+}
+
+model Room {
+  id              String   @id @default(uuid())
+  floorId         String
+  buildingId      String
+  name            String
+  size            String?
+  pricePerMonth   Decimal  @default(0) @db.Decimal(12, 2)
+  active          Boolean  @default(true)
+  // How Start Bill should treat meter readings for this room:
+  //   "manual"    — prev auto-filled from last record, user enters current  (default)
+  //   "auto"      — prev + current auto-filled from last record, no input needed
+  meterReadingMode String  @default("manual")
+  // Asset inventory list (e.g. furniture, appliances). Each item:
+  //   { id, name, notes?, photoUrl?, addedAt }
+  assets          Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  floor    Floor          @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  building Building       @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  contracts     Contract[]
+  roomServices  RoomService[]
+  meterReadings MeterReading[]
+  invoices      Invoice[]
+  telegramLink  TelegramLink?
+  bankPayments  BankPayment[]
+
+  @@index([floorId])
+  @@index([buildingId])
+  @@map("rooms")
+}
+
+// ── Tenants & contracts ─────────────────────────────────────────────────────
+
+enum TenantStatus {
+  active
+  inactive
+}
+
+model Tenant {
+  id        String       @id @default(uuid())
+  fullName  String
+  phone     String       @unique
+  photoUrl  String?
+  // Attached documents (ID copies, contract scans, etc.)
+  // Each item: { id, name, type, size, dataUrl, uploadedAt }
+  documents Json         @default("[]")
+  status    TenantStatus @default(active)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  contracts Contract[]
+  invoices  Invoice[]
+
+  @@map("tenants")
+}
+
+enum ContractStatus {
+  active
+  terminated
+}
+
+model Contract {
+  id                String          @id @default(uuid())
+  roomId            String
+  tenantId          String
+  tenantName        String
+  tenantPhone       String
+  startDate         DateTime        @db.Date
+  endDate           DateTime?       @db.Date
+  baseRent          Decimal         @default(0) @db.Decimal(12, 2)
+  securityDeposit   Decimal         @default(0) @db.Decimal(12, 2)
+  status            ContractStatus  @default(active)
+  terminationReason String?
+  terminatedAt      DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([roomId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("contracts")
+}
+
+// ── Services ────────────────────────────────────────────────────────────────
+
+enum ServiceType {
+  WATER
+  ELECTRICITY
+  FIXED
+}
+
+// Master service catalog (Water, Electricity, Parking, Wifi, etc.)
+model ServiceFee {
+  id          String      @id @default(uuid())
+  name        String
+  icon        String      @default("Box")
+  serviceType ServiceType @default(FIXED)
+  defaultRate Decimal     @default(0) @db.Decimal(12, 4)
+  unit        String      @default("mo")
+  active      Boolean     @default(true)
+  // When true, this service is auto-enabled on every new tenant contract
+  isDefault   Boolean     @default(false)
+  // System-seeded WATER + ELECTRICITY are not deletable
+  deletable   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  roomServices RoomService[]
+
+  @@map("service_fees")
+}
+
+// Per-room enabled service with optional price override
+model RoomService {
+  id            String      @id @default(uuid())
+  roomId        String
+  serviceFeeId  String
+  priceOverride Decimal?    @db.Decimal(12, 4)
+  active        Boolean     @default(true)
+  assignedAt    DateTime    @default(now())
+
+  room       Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  serviceFee ServiceFee @relation(fields: [serviceFeeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, serviceFeeId])
+  @@index([roomId])
+  @@map("room_services")
+}
+
+// ── Meter readings ──────────────────────────────────────────────────────────
+
+// One row per (room, recordDate, serviceType). Frontend groups them client-side.
+model MeterReading {
+  id              String      @id @default(uuid())
+  roomId          String
+  serviceType     ServiceType
+  recordDate      DateTime    @db.Date
+  recordedByName  String
+  previousReading Decimal     @db.Decimal(12, 3)
+  currentReading  Decimal     @db.Decimal(12, 3)
+  createdAt       DateTime    @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, serviceType, recordDate])
+  @@map("meter_readings")
+}
+
+// ── Invoices ────────────────────────────────────────────────────────────────
+
+enum InvoiceStatus {
+  progress
+  paid
+  cancelled
+}
+
+enum InvoicePaymentMethod {
+  Cash
+  QRTransfer
+}
+
+enum LineItemType {
+  RENT
+  WATER
+  ELECTRICITY
+  FIXED_SERVICE
+}
+
+model Invoice {
+  id              String         @id @default(uuid())
+  invoiceNumber   String         @unique
+  roomId          String
+  tenantId        String?
+  // Snapshots — preserved even if room/tenant later changes
+  tenantName      String
+  tenantPhone     String?
+  roomName        String
+  buildingName    String
+  floorName       String
+  billPeriodStart DateTime       @db.Date
+  billPeriodEnd   DateTime       @db.Date
+  dueDate         DateTime       @db.Date
+  billDays        Int
+  daysInMonth     Int
+  status          InvoiceStatus  @default(progress)
+  baseRent        Decimal        @default(0) @db.Decimal(12, 2)
+  securityDeposit Decimal        @default(0) @db.Decimal(12, 2)
+  subtotal        Decimal        @default(0) @db.Decimal(12, 2)
+  totalAmount     Decimal        @default(0) @db.Decimal(12, 2)
+  exchangeRate    Decimal        @default(4000) @db.Decimal(12, 2)
+  khrAmount       Decimal?       @db.Decimal(14, 2)
+  paymentMethod   InvoicePaymentMethod?
+  paidAt          DateTime?
+  cancelReason    String?
+  cancelledAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  room      Room              @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  lineItems InvoiceLineItem[]
+
+  @@index([roomId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([billPeriodStart])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id              String       @id @default(uuid())
+  invoiceId       String
+  lineItemType    LineItemType
+  description     String
+  previousReading Decimal?     @db.Decimal(12, 3)
+  currentReading  Decimal?     @db.Decimal(12, 3)
+  unitPrice       Decimal?     @db.Decimal(12, 4)
+  amount          Decimal      @db.Decimal(12, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+// ── Notifications ───────────────────────────────────────────────────────────
+
+enum NotificationType {
+  OVERDUE_INVOICE
+  PAYMENT_RECEIVED
+  TENANT_ADDED
+  GENERIC
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  ref       String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// ── Settings ────────────────────────────────────────────────────────────────
+
+// Simple key/value store. Known keys:
+// KHR_EXCHANGE_RATE, INVOICE_HEADER_ENABLED, INVOICE_BIZ_NAME, INVOICE_TIN_NO,
+// INVOICE_ADDRESS, INVOICE_BIZ_PHONE, INVOICE_NO_DIGITS,
+// INVOICE_FOOTER_ENABLED, INVOICE_FOOTER_NOTE
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Bank payment notifications received from Telegram bot. One row per
+// inbound payment-confirmation message; transactionId is the dedupe key.
+// roomId is set when the message arrived in a chat that has been linked
+// to a specific room via TelegramLink. Pre-link rows stay null.
+model BankPayment {
+  id             String   @id @default(uuid())
+  roomId         String?                                // room whose linked chat sent this confirmation
+  bank           String                                 // 'ABA', 'ACLEDA', …
+  amount         Decimal  @db.Decimal(14, 4)
+  currency       String                                 // 'USD' | 'KHR'
+  senderName     String?
+  senderAccount  String?                                // last-4 digits / masked
+  transactionId  String   @unique                       // bank-side txn id
+  apv            String?                                // ABA approval code
+  paidAt         DateTime
+  rawText        String                                 // original Telegram message text
+  chatId         String?                                // Telegram chat id (string for safety)
+  messageId      Int?                                   // Telegram message id
+  receivedAt     DateTime @default(now())
+
+  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@index([paidAt])
+  @@index([bank])
+  @@index([roomId, paidAt])
+  @@map("bank_payments")
+}
+
+// Maps a Telegram chat (group / channel) to a specific Room. Created
+// when an owner sends `/link <code>` in the group with the bot present;
+// the code was minted from that room's detail page in the Mini App.
+//   - chatId @unique: one chat can only be linked to one room
+//   - roomId @unique: one room can only have one Telegram group
+model TelegramLink {
+  id        String   @id @default(uuid())
+  roomId    String   @unique
+  chatId    String   @unique
+  chatTitle String?
+  linkedAt  DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_links")
+}
+
+// Property-wide Telegram chats where the customer's bank bots (ABA,
+// ACLEDA, …) post payment confirmations. Our bot is added to these
+// chats too; when it reads a bank confirmation it ingests the row into
+// the global Payments list with no roomId attribution.
+//   - chatId @unique: each chat can only fill one role at a time
+model BankNotificationGroup {
+  id        String   @id @default(uuid())
+  chatId    String   @unique
+  chatTitle String?
+  linkedAt  DateTime @default(now())
+
+  @@map("bank_notification_groups")
+}
