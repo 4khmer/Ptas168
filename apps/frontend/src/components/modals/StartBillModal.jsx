@@ -167,23 +167,24 @@ export default function StartBillModal({ open, onClose, roomId, onSuccess }) {
     ? `${t('modal.startBill.last')}: ${formatFullDate(waterLatest.lastRecordDate)}`
     : t('modal.startBill.noRecord')
 
-  function validate() {
-    const errs = {}
-    // Only validate metered services that are actually enabled for this tenant
-    if (waterSvc && !waterLatest?.autoFilled) {
-      if (!waterCurrent) errs.wc = t('modal.startBill.errWater')
-      else if (parseFloat(waterCurrent) < waterPrev) errs.wc = `${t('modal.startBill.errLessThan')} ${waterPrev}`
-    }
-    if (elecSvc && !elecLatest?.autoFilled) {
-      if (!elecCurrent) errs.ec = t('modal.startBill.errElec')
-      else if (parseFloat(elecCurrent) < elecPrev) errs.ec = `${t('modal.startBill.errLessThan')} ${elecPrev}`
-    }
-    return errs
-  }
-
   async function handleSubmit() {
-    const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    // Only validate metered services that are actually enabled and not auto-filled.
+    const formSchema = z.object({
+      wc: z.union([z.literal(''), z.coerce.number().nonnegative()]),
+      ec: z.union([z.literal(''), z.coerce.number().nonnegative()]),
+    }).superRefine((v, ctx) => {
+      if (waterSvc && !waterLatest?.autoFilled) {
+        if (v.wc === '') ctx.addIssue({ code: 'custom', path: ['wc'], message: t('modal.startBill.errWater') })
+        else if (Number(v.wc) < waterPrev) ctx.addIssue({ code: 'custom', path: ['wc'], message: `${t('modal.startBill.errLessThan')} ${waterPrev}` })
+      }
+      if (elecSvc && !elecLatest?.autoFilled) {
+        if (v.ec === '') ctx.addIssue({ code: 'custom', path: ['ec'], message: t('modal.startBill.errElec') })
+        else if (Number(v.ec) < elecPrev) ctx.addIssue({ code: 'custom', path: ['ec'], message: `${t('modal.startBill.errLessThan')} ${elecPrev}` })
+      }
+    })
+
+    const result = validate(formSchema, { wc: waterCurrent, ec: elecCurrent })
+    if (!result.ok) { setErrors(result.errors); return }
 
     setSubmitting(true)
     try {

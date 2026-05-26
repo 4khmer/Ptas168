@@ -29,5 +29,13 @@ export default defineConfig(({ mode }) => {
     ssr: {
       noExternal: ['@ptas/contracts', '@ptas/sdk'],
     },
+    build: {
+      // Production build (Rollup) — tell @rollup/plugin-commonjs to also
+      // transform our workspace CJS packages. Without this, named imports
+      // like `payInvoiceSchema` from @ptas/contracts fail static analysis.
+      commonjsOptions: {
+        include: [/node_modules/, /packages\/contracts/, /packages\/sdk/],
+      },
+    },
   }
 })

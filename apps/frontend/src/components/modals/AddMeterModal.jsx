@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { z } from 'zod'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { Droplets, Zap } from 'lucide-react'
 import { useT } from '../../lib/i18n'
+import { validate } from '../../lib/validate.js'
 
 /**
  * Add a meter reading. Shows Water / Electricity rows based on which services
@@ -37,24 +39,26 @@ export default function AddMeterModal({ open, onClose, onConfirm, lastReading, s
   const waterPrev = lastReading?.waterCurrent ?? 0
   const elecPrev  = lastReading?.elecCurrent ?? 0
 
-  function validate() {
-    const errs = {}
-    if (hasWater) {
-      const wc = parseFloat(waterCurrent)
-      if (!waterCurrent) errs.water = t('modal.addMeter.errReq')
-      else if (wc < waterPrev) errs.water = `${t('modal.addMeter.errLess')} (${waterPrev})`
-    }
-    if (hasElec) {
-      const ec = parseFloat(elecCurrent)
-      if (!elecCurrent) errs.elec = t('modal.addMeter.errReq')
-      else if (ec < elecPrev) errs.elec = `${t('modal.addMeter.errLess')} (${elecPrev})`
-    }
-    return errs
-  }
-
   function handleSubmit() {
-    const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    // Build a form-shape schema. Per-service refinement keeps the error
+    // paths aligned with the input names (water / elec).
+    const formSchema = z.object({
+      water: z.union([z.literal(''), z.coerce.number().nonnegative()]),
+      elec:  z.union([z.literal(''), z.coerce.number().nonnegative()]),
+    }).superRefine((v, ctx) => {
+      if (hasWater) {
+        if (v.water === '') ctx.addIssue({ code: 'custom', path: ['water'], message: t('modal.addMeter.errReq') })
+        else if (Number(v.water) < waterPrev) ctx.addIssue({ code: 'custom', path: ['water'], message: `${t('modal.addMeter.errLess')} (${waterPrev})` })
+      }
+      if (hasElec) {
+        if (v.elec === '') ctx.addIssue({ code: 'custom', path: ['elec'], message: t('modal.addMeter.errReq') })
+        else if (Number(v.elec) < elecPrev) ctx.addIssue({ code: 'custom', path: ['elec'], message: `${t('modal.addMeter.errLess')} (${elecPrev})` })
+      }
+    })
+
+    const result = validate(formSchema, { water: waterCurrent, elec: elecCurrent })
+    if (!result.ok) { setErrors(result.errors); return }
+
     onConfirm({
       date,
       recorder: 'Manager',

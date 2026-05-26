@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { z } from 'zod'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { useStore } from '../../store'
 import { useT } from '../../lib/i18n'
 import { formatPhone } from '../../lib/phone'
+import { validate } from '../../lib/validate.js'
 import { Search, CheckCircle, UserPlus } from 'lucide-react'
 
 export default function AddTenantModal({ open, onClose, roomId, roomName, roomPrice = 0 }) {
@@ -26,10 +28,14 @@ export default function AddTenantModal({ open, onClose, roomId, roomName, roomPr
   }
 
   async function handleLookup() {
-    if (!phone.trim()) { setErrors({ phone: t('modal.addTenant.errEnterPhone') }); return }
+    const phoneSchema = z.object({
+      phone: z.string().trim().min(3, t('modal.addTenant.errEnterPhone')),
+    })
+    const r = validate(phoneSchema, { phone })
+    if (!r.ok) { setErrors(r.errors); return }
     setLoading(true)
     try {
-      const found = await lookupTenantByPhone(phone.trim())
+      const found = await lookupTenantByPhone(r.data.phone)
       if (found) { setFoundTenant(found); setStep('found') }
       else        setStep('new')
       setErrors({})
@@ -41,15 +47,23 @@ export default function AddTenantModal({ open, onClose, roomId, roomName, roomPr
   }
 
   function handleNewNext() {
-    if (!newName.trim()) { setErrors({ name: t('modal.addTenant.errNameReq') }); return }
+    const nameSchema = z.object({
+      name: z.string().trim().min(1, t('modal.addTenant.errNameReq')).max(120),
+    })
+    const r = validate(nameSchema, { name: newName })
+    if (!r.ok) { setErrors(r.errors); return }
     setErrors({}); setStep('contract')
   }
 
   async function handleFinalSubmit() {
-    const errs = {}
-    if (!moveInDate) errs.moveIn = t('modal.addTenant.errMoveIn')
-    if (secDeposit !== '' && parseFloat(secDeposit) < 0) errs.deposit = t('modal.addTenant.errDeposit')
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    const contractSchema = z.object({
+      moveIn:  z.string().min(1, t('modal.addTenant.errMoveIn')),
+      // The deposit field is optional in the UI; only validate when a value
+      // is present. Negative values are rejected.
+      deposit: z.union([z.literal(''), z.coerce.number().nonnegative(t('modal.addTenant.errDeposit'))]),
+    })
+    const r = validate(contractSchema, { moveIn: moveInDate, deposit: secDeposit })
+    if (!r.ok) { setErrors(r.errors); return }
 
     setLoading(true)
     try {
@@ -60,7 +74,7 @@ export default function AddTenantModal({ open, onClose, roomId, roomName, roomPr
         // Base rent follows the room's set price; the owner can override
         // later from Room Detail → Tenant tab.
         baseRent: Number(roomPrice) || 0,
-        securityDeposit: secDeposit === '' ? 0 : parseFloat(secDeposit),
+        securityDeposit: r.data.deposit === '' ? 0 : Number(r.data.deposit),
         endDate: null,
       })
       reset()
@@ -86,7 +100,7 @@ export default function AddTenantModal({ open, onClose, roomId, roomName, roomPr
             type="tel"
             placeholder={t('modal.addTenant.phonePh')}
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={e => { setPhone(e.target.value); setErrors({}) }}
             error={errors.phone}
             onKeyDown={e => e.key === 'Enter' && handleLookup()}
           />
@@ -133,7 +147,7 @@ export default function AddTenantModal({ open, onClose, roomId, roomName, roomPr
             label={t('modal.addTenant.fullName')}
             placeholder={t('modal.addTenant.fullNamePh')}
             value={newName}
-            onChange={e => setNewName(e.target.value)}
+            onChange={e => { setNewName(e.target.value); setErrors({}) }}
             error={errors.name}
           />
           <Button onClick={handleNewNext}>{t('common.next')}</Button>
@@ -146,9 +160,9 @@ export default function AddTenantModal({ open, onClose, roomId, roomName, roomPr
         <div>
           <div className="text-[13px] font-semibold text-[#454745] mb-3">{t('modal.addTenant.contractFor')} {roomName}</div>
           <Input label={t('modal.addTenant.moveIn')} type="date" value={moveInDate}
-            onChange={e => setMoveInDate(e.target.value)} error={errors.moveIn} />
+            onChange={e => { setMoveInDate(e.target.value); setErrors(p => ({ ...p, moveIn: '' })) }} error={errors.moveIn} />
           <Input label={t('modal.addTenant.deposit')} type="number" step="0.01" placeholder={t('modal.addTenant.depositPh')}
-            value={secDeposit} onChange={e => setSecDeposit(e.target.value)} error={errors.deposit} />
+            value={secDeposit} onChange={e => { setSecDeposit(e.target.value); setErrors(p => ({ ...p, deposit: '' })) }} error={errors.deposit} />
           <div className="bg-[#e8ebe6] rounded-xl p-3 mb-4 flex items-center justify-between">
             <span className="text-[12px] text-[#454745]">{t('modal.addTenant.rentFromRoom')}</span>
             <span className="text-[14px] font-bold text-[#0e0f0c]">${(Number(roomPrice) || 0).toFixed(2)}/mo</span>
