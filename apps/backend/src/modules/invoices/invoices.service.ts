@@ -12,6 +12,7 @@ import { telegramLinksRepository } from '../telegramLinks/telegramLinks.reposito
 import { sendBotMessage } from '../telegramBot/telegramBot.client'
 import { invoicesRepository } from './invoices.repository'
 import { formatInvoiceForTelegram } from './invoices.formatter'
+import { enqueueInvoicePaid } from '../../lib/queue'
 import type { CreateInvoiceInput, ListInvoicesPageInput, InvoiceCountsInput } from './invoices.schema'
 
 function daysBetween(a: Date, b: Date): number {
@@ -283,7 +284,17 @@ export const invoicesService = {
       paymentMethod: method === 'QR Transfer' ? 'QRTransfer' : 'Cash',
       paidAt: new Date(),
     })
-    return toInvoiceDto(row)
+    // Fire-and-forget: the worker creates PAYMENT_RECEIVED notifications.
+    // Enqueue failures (e.g. Redis down) log but never break the API.
+    const dto = toInvoiceDto(row)
+    void enqueueInvoicePaid({
+      invoiceId: dto.id,
+      invoiceNumber: dto.invoiceNumber,
+      tenantName: dto.tenantName,
+      totalAmount: dto.totalAmount,
+      paymentMethod: dto.paymentMethod,
+    })
+    return dto
   },
 
   async cancel(id: string, reason?: string): Promise<InvoiceDto> {

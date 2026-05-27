@@ -12,26 +12,16 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) })
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.string().regex(/^\d+$/).transform(Number).default('3000'),
   DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url().optional(),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  JWT_EXPIRES_IN: z.string().default('24h'),
-  TELEGRAM_BOT_TOKEN: z.string().min(1, 'TELEGRAM_BOT_TOKEN is required'),
+  REDIS_URL: z.string().url(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
-  UPLOAD_DIR: z.string().optional(),
-  FILE_URL_BASE: z.string().optional(),
-  API_BASE_PATH: z.string().regex(/^\/[^?#]*$/, 'API_BASE_PATH must start with /').default('/api'),
-  TELEGRAM_BANK_BOT_TOKEN: z.string().optional(),
-  TELEGRAM_BANK_WEBHOOK_SECRET: z.string().optional(),
+  OVERDUE_CRON: z.string().default('0 9 * * *'),
 })
 
 const parsed = envSchema.safeParse(process.env)
-
 if (!parsed.success) {
   // eslint-disable-next-line no-console
-  console.error('❌ Invalid environment configuration:')
+  console.error('❌ Invalid worker environment:')
   for (const issue of parsed.error.issues) {
     // eslint-disable-next-line no-console
     console.error(`  - ${issue.path.join('.')}: ${issue.message}`)
