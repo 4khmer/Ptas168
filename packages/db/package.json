@@ -1,0 +1,37 @@
+{
+  "name": "@ptas/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Database layer — owns prisma/schema.prisma + migrations + seeds. Apps depend on this to share the schema and run `prisma generate` exactly once.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "src", "prisma"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "clean": "rm -rf dist",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "seed": "tsx prisma/seed.ts",
+    "demo-seed": "tsx prisma/demo-seed.ts",
+    "psql": "psql \"$DATABASE_URL\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.16.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "prisma": "^5.20.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

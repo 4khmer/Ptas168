@@ -3,20 +3,18 @@
 // Idempotent: every row uses a fixed `demo-*` id and is upserted in place.
 // Re-running this script updates in place, never duplicates.
 //
-//   pnpm prisma:demo-seed                  # populate
-//   pnpm db:reset && pnpm prisma:seed \    # to wipe + re-seed everything
-//     && pnpm prisma:demo-seed
+//   pnpm db:demo-seed                          # populate
+//   pnpm db:reset && pnpm db:migrate && \      # to wipe + re-seed everything
+//     pnpm db:seed && pnpm db:demo-seed
 
 import dotenv from 'dotenv'
-import path from 'node:path'
 import { PrismaClient, Prisma } from '@prisma/client'
 
-const envFile = process.env.NODE_ENV === 'production'
-  ? '.env.production'
-  : process.env.NODE_ENV === 'test'
-    ? '.env.test'
-    : '.env.development'
-dotenv.config({ path: path.resolve(process.cwd(), envFile) })
+dotenv.config()
+
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('prisma/demo-seed.ts must not run in production — it inserts test data.')
+}
 
 const prisma = new PrismaClient()
 

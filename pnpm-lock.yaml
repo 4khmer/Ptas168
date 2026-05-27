@@ -23,6 +23,9 @@ importers:
       '@ptas/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@ptas/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -111,9 +114,6 @@ importers:
       prettier:
         specifier: ^3.3.3
         version: 3.8.3
-      prisma:
-        specifier: ^5.20.0
-        version: 5.22.0
       supertest:
         specifier: ^7.0.0
         version: 7.2.2
@@ -199,6 +199,9 @@ importers:
       '@ptas/bank-parsers':
         specifier: workspace:*
         version: link:../../packages/bank-parsers
+      '@ptas/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       bullmq:
         specifier: ^5.21.2
         version: 5.77.3
@@ -239,6 +242,9 @@ importers:
       '@ptas/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@ptas/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       bullmq:
         specifier: ^5.21.2
         version: 5.77.3
@@ -280,6 +286,34 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
+  packages/db:
+    dependencies:
+      '@prisma/client':
+        specifier: ^5.20.0
+        version: 5.22.0(prisma@5.22.0)
+    devDependencies:
+      '@types/bcryptjs':
+        specifier: ^2.4.6
+        version: 2.4.6
+      '@types/node':
+        specifier: ^20.16.0
+        version: 20.19.41
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      prisma:
+        specifier: ^5.20.0
+        version: 5.22.0
+      tsx:
+        specifier: ^4.19.0
+        version: 4.22.3
       typescript:
         specifier: ^5.6.0
         version: 5.9.3

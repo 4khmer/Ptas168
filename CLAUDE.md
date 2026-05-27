@@ -18,6 +18,7 @@ ptas168/
 │   ├── worker/                     BullMQ jobs: cron + event-driven (no HTTP surface)
 │   └── telegram-bot/               grammy long-polling + BullMQ consumer (no HTTP surface)
 ├── packages/
+│   ├── db/                         @ptas/db — Prisma schema + migrations + seeds (single owner of the DB layer)
 │   ├── contracts/                  @ptas/contracts — Zod schemas + TS types (pure, no logic)
 │   │   └── CLAUDE.md               extract rules + NodeNext quirk
 │   ├── sdk/                        @ptas/sdk — frontend's typed HTTP client + adapters
@@ -36,12 +37,20 @@ Three runtime processes share Postgres + Redis: **backend** (HTTP), **worker** (
 ## Commands you'll use most
 
 ```bash
-# infra
+# infra (docker)
 pnpm db:up                                # start postgres + redis containers
 pnpm db:down                              # stop (data preserved in named volumes)
 pnpm db:reset                             # nuke volumes + restart
 pnpm db:psql                              # psql shell into the docker DB
 pnpm db:logs                              # follow container logs
+
+# prisma (delegates to @ptas/db; schema + migrations live there)
+pnpm db:generate                          # regenerate @prisma/client from schema.prisma
+pnpm db:migrate                           # prisma migrate dev (create + apply)
+pnpm db:deploy                            # prisma migrate deploy (prod-safe)
+pnpm db:studio                            # http://localhost:5555
+pnpm db:seed                              # bootstrap admin user + system services + settings
+pnpm db:demo-seed                         # demo dataset (idempotent demo-* ids)
 
 # dev — each process in its own terminal
 pnpm dev:backend                          # api on http://localhost:3001
@@ -49,19 +58,13 @@ pnpm dev:frontend                         # vite on http://localhost:8080/Ptas16
 pnpm --filter @ptas/worker dev            # BullMQ worker (overdue cron + invoice-paid)
 pnpm --filter @ptas/telegram-bot dev      # grammy bot (stub mode without TELEGRAM_BOT_TOKEN)
 
-# build everything (turbo orchestrates contracts → sdk → bank-parsers → apps)
+# build everything (turbo orchestrates db → contracts → sdk → bank-parsers → apps)
 pnpm turbo run build
-
-# from apps/backend
-pnpm prisma migrate dev --name <x>        # create + apply migration
-pnpm prisma studio                        # http://localhost:5555
-pnpm prisma:seed                          # bootstrap admin user + system services + settings
-pnpm prisma:demo-seed                     # demo dataset (idempotent demo-* ids)
 ```
 
 ## Dev login
 
-`admin` / `admin123` (seeded by `pnpm prisma:seed`). **Do not ship this to production** — `prisma:seed` is dev-only.
+`admin` / `admin123` (seeded by `pnpm db:seed`). **Do not ship this to production** — `db:seed` is guarded against `NODE_ENV=production`.
 
 ## Environment
 
@@ -69,8 +72,8 @@ pnpm prisma:demo-seed                     # demo dataset (idempotent demo-* ids)
 - `gh` CLI authenticated as `KheangZinII` — `gh repo clone 4khmer/<name>` works for the org's private repos
 - Docker Desktop required for the local DB stack
 - **Env files per process** (each loads `.env.development` / `.env.production` based on `NODE_ENV`):
+  - [packages/db/.env](packages/db/.env) — `DATABASE_URL` for the Prisma CLI + seed scripts (gitignored)
   - [apps/backend/.env.development](apps/backend/.env.development) — `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TELEGRAM_BANK_BOT_TOKEN`, …
-  - [apps/backend/.env](apps/backend/.env) — bare file for the Prisma CLI only (the runtime uses `.env.development`)
   - [apps/worker/.env.development](apps/worker/.env.development) — `DATABASE_URL`, `REDIS_URL`, `OVERDUE_CRON`
   - [apps/telegram-bot/.env.development](apps/telegram-bot/.env.development) — `DATABASE_URL`, `REDIS_URL`, `TELEGRAM_BOT_TOKEN` (leave empty for stub mode)
   - [apps/frontend/.env.production](apps/frontend/.env.production) — `VITE_API_URL`, `VITE_FILE_URL`
@@ -79,6 +82,7 @@ pnpm prisma:demo-seed                     # demo dataset (idempotent demo-* ids)
 
 | Layer | Package/App | What it does |
 |---|---|---|
+| Database layer | `@ptas/db` | Owns `prisma/schema.prisma`, migrations, seed + demo-seed. Apps that touch the DB depend on this (each app still instantiates its own `PrismaClient` for connection-pool tuning, but the schema and generated client are shared via pnpm-hoisted `@prisma/client`). |
 | Wire-format contracts | `@ptas/contracts` | All Zod schemas + DTO types. **No logic.** Both reads and writes flow through these. |
 | HTTP client | `@ptas/sdk` | The frontend's only path to the backend. Wraps fetch, owns the 3 wire→UI adapters (`adaptInvoice`, `groupMeterReadings`, `parseInvoiceSettings`). ESM. |
 | Bank parsers | `@ptas/bank-parsers` | Pure regex-based parsers for bank confirmation text. Shared by backend (`/api/bank-payments` list) and bot (raw-message ingestion). |
@@ -116,7 +120,7 @@ Five distinct runtime contexts, two distinct languages. Before editing code, **a
 
 | Concept | Lives **only** in |
 |---|---|
-| Prisma schema, migrations, seeds | `apps/backend/prisma/` |
+| Prisma schema, migrations, seeds | `packages/db/prisma/` (run via `pnpm db:migrate`, `pnpm db:seed`, etc.) |
 | `@prisma/client` DB queries | `apps/backend/src/modules/<domain>/<domain>.repository.ts`, plus `apps/worker/src/` and `apps/telegram-bot/src/` for those processes |
 | Wire types + Zod schemas | `packages/contracts/src/*.ts` (single source of truth for both ends) |
 | HTTP route handlers, controllers, services | `apps/backend/src/modules/<domain>/` |

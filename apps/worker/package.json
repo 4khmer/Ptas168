@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@ptas/contracts": "workspace:*",
+    "@ptas/db": "workspace:*",
     "@prisma/client": "^5.20.0",
     "bullmq": "^5.21.2",
     "dotenv": "^16.4.5",

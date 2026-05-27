@@ -1,17 +1,16 @@
 /* eslint-disable no-console */
 import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
-import path from 'node:path'
 import { PrismaClient } from '@prisma/client'
 
-// Match the env-file convention used by src/config/env.ts so the seed
-// works locally (.env.development) and in CI (.env.production).
-const envFile = process.env.NODE_ENV === 'production'
-  ? '.env.production'
-  : process.env.NODE_ENV === 'test'
-    ? '.env.test'
-    : '.env.development'
-dotenv.config({ path: path.resolve(process.cwd(), envFile) })
+// Loads DATABASE_URL from packages/db/.env when run via `pnpm --filter
+// @ptas/db seed`. In CI / prod, set DATABASE_URL in the environment
+// directly and this is a no-op.
+dotenv.config()
+
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('prisma/seed.ts must not run in production — use pnpm --filter @ptas/db deploy + manual SQL if you need to seed.')
+}
 
 const prisma = new PrismaClient()
 
