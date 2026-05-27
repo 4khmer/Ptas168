@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { invoicesService } from './invoices.service'
+import { invoicesService } from './invoices.service.js'
 import {
   cancelInvoiceSchema,
   createInvoiceSchema,
@@ -7,7 +7,7 @@ import {
   listInvoicesPageQuery,
   listInvoicesQuery,
   payInvoiceSchema,
-} from './invoices.schema'
+} from './invoices.schema.js'
 
 export const invoicesController = {
   async list(req: Request, res: Response): Promise<void> {

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { roomsService } from './rooms.service'
-import { createRoomSchema, updateRoomSchema } from './rooms.schema'
+import { roomsService } from './rooms.service.js'
+import { createRoomSchema, updateRoomSchema } from './rooms.schema.js'
 
 export const roomsController = {
   async list(_req: Request, res: Response): Promise<void> {

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
-import { ForbiddenError, UnauthorizedError } from '../utils/errors'
-import { verifyJwt, type JwtPayload } from '../utils/jwt'
+import { ForbiddenError, UnauthorizedError } from '../utils/errors.js'
+import { verifyJwt, type JwtPayload } from '../utils/jwt.js'
 
 declare module 'express-serve-static-core' {
   interface Request {

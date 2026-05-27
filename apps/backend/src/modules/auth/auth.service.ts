@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs'
-import { env } from '../../config/env'
-import { ConflictError, UnauthorizedError, ValidationError } from '../../utils/errors'
-import { signJwt } from '../../utils/jwt'
-import { toUserDto, type UserDto } from '../../utils/adapters'
-import { authRepository } from './auth.repository'
-import type { RegisterInput } from './auth.schema'
-import { validateTelegramInitData } from './telegram-validator'
+import { env } from '../../config/env.js'
+import { ConflictError, UnauthorizedError, ValidationError } from '../../utils/errors.js'
+import { signJwt } from '../../utils/jwt.js'
+import { toUserDto, type UserDto } from '../../utils/adapters.js'
+import { authRepository } from './auth.repository.js'
+import type { RegisterInput } from './auth.schema.js'
+import { validateTelegramInitData } from './telegram-validator.js'
 
 export interface AuthResponse {
   token: string

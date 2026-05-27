@@ -1,5 +1,5 @@
 import type { Notification } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const notificationsRepository = {
   list: (userId: string, opts: { take?: number; onlyUnread?: boolean }): Promise<Notification[]> =>

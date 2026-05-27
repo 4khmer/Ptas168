@@ -1,7 +1,7 @@
-import { ForbiddenError, NotFoundError } from '../../utils/errors'
-import { toServiceFeeDto, type ServiceFeeDto } from '../../utils/adapters'
-import { serviceFeesRepository } from './serviceFees.repository'
-import type { CreateServiceFeeInput, UpdateServiceFeeInput } from './serviceFees.schema'
+import { ForbiddenError, NotFoundError } from '../../utils/errors.js'
+import { toServiceFeeDto, type ServiceFeeDto } from '../../utils/adapters.js'
+import { serviceFeesRepository } from './serviceFees.repository.js'
+import type { CreateServiceFeeInput, UpdateServiceFeeInput } from './serviceFees.schema.js'
 
 export const serviceFeesService = {
   async list(): Promise<ServiceFeeDto[]> {

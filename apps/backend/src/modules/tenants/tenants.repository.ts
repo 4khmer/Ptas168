@@ -1,5 +1,5 @@
 import { Prisma, type Tenant } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const tenantsRepository = {
   list: (): Promise<Tenant[]> =>

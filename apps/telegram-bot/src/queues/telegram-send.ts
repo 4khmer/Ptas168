@@ -1,8 +1,8 @@
 import { Worker, type Job } from 'bullmq'
 import type { Bot } from 'grammy'
 import { z } from 'zod'
-import { bullmqConnection } from '../config/redis'
-import { logger } from '../config/logger'
+import { bullmqConnection } from '../config/redis.js'
+import { logger } from '../config/logger.js'
 
 // Keep in sync with apps/backend/src/lib/queue.ts.
 export const TELEGRAM_SEND_QUEUE = 'telegram-send' as const

@@ -1,4 +1,4 @@
-import type { InvoiceDto } from '../../utils/adapters'
+import type { InvoiceDto } from '../../utils/adapters.js'
 
 function fmtDate(s: string): string {
   if (!s) return ''

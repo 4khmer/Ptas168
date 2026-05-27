@@ -1,8 +1,8 @@
-import { NotFoundError } from '../../utils/errors'
-import { toFloorDto, type FloorDto } from '../../utils/adapters'
-import { buildingsRepository } from '../buildings/buildings.repository'
-import { floorsRepository } from './floors.repository'
-import type { CreateFloorInput, UpdateFloorInput } from './floors.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toFloorDto, type FloorDto } from '../../utils/adapters.js'
+import { buildingsRepository } from '../buildings/buildings.repository.js'
+import { floorsRepository } from './floors.repository.js'
+import type { CreateFloorInput, UpdateFloorInput } from './floors.schema.js'
 
 export const floorsService = {
   async list(buildingId?: string): Promise<FloorDto[]> {

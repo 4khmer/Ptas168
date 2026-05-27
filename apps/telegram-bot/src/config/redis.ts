@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis'
-import { env } from './env'
-import { logger } from './logger'
+import { env } from './env.js'
+import { logger } from './logger.js'
 
 // Shared ioredis client for the non-BullMQ uses — currently just the
 // link-code consumption (GETDEL on tg:link-code:<code> and

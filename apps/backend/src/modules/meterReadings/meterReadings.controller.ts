@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { meterReadingsService } from './meterReadings.service'
-import { createMeterReadingSchema } from './meterReadings.schema'
+import { meterReadingsService } from './meterReadings.service.js'
+import { createMeterReadingSchema } from './meterReadings.schema.js'
 
 export const meterReadingsController = {
   async list(req: Request, res: Response): Promise<void> {

@@ -1,10 +1,10 @@
-import { ConflictError, NotFoundError } from '../../utils/errors'
-import { toContractDto, type ContractDto } from '../../utils/adapters'
-import { prisma } from '../../lib/prisma'
-import { roomsRepository } from '../rooms/rooms.repository'
-import { tenantsRepository } from '../tenants/tenants.repository'
-import { contractsRepository } from './contracts.repository'
-import type { AddTenantToRoomInput, UpdateContractInput } from './contracts.schema'
+import { ConflictError, NotFoundError } from '../../utils/errors.js'
+import { toContractDto, type ContractDto } from '../../utils/adapters.js'
+import { prisma } from '../../lib/prisma.js'
+import { roomsRepository } from '../rooms/rooms.repository.js'
+import { tenantsRepository } from '../tenants/tenants.repository.js'
+import { contractsRepository } from './contracts.repository.js'
+import type { AddTenantToRoomInput, UpdateContractInput } from './contracts.schema.js'
 
 export const contractsService = {
   async list(filters: { roomId?: string; tenantId?: string; status?: 'active' | 'terminated' }): Promise<ContractDto[]> {

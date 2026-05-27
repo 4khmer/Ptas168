@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { tenantsService } from './tenants.service'
-import { createTenantSchema, lookupTenantQuery, updateTenantSchema } from './tenants.schema'
+import { tenantsService } from './tenants.service.js'
+import { createTenantSchema, lookupTenantQuery, updateTenantSchema } from './tenants.schema.js'
 
 export const tenantsController = {
   async list(_req: Request, res: Response): Promise<void> {

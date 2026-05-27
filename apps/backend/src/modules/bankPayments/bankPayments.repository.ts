@@ -1,5 +1,5 @@
 import type { BankPayment, Prisma } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const bankPaymentsRepository = {
   list: (limit = 200): Promise<BankPayment[]> =>

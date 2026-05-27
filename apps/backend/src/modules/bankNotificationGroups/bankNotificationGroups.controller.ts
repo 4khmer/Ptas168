@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { bankNotificationGroupsService } from './bankNotificationGroups.service'
+import { bankNotificationGroupsService } from './bankNotificationGroups.service.js'
 
 export const bankNotificationGroupsController = {
   async list(_req: Request, res: Response): Promise<void> {

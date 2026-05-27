@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Shared types and Zod schemas for the PTAS168 monorepo (DTOs, enums, error envelope). No logic, no Prisma, no framework imports.",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist", "src"],

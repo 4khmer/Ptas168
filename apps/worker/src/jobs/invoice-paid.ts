@@ -1,7 +1,7 @@
 import { Job } from 'bullmq'
-import { prisma } from '../config/prisma'
-import { logger } from '../config/logger'
-import { invoicePaidPayloadSchema, type InvoicePaidPayload } from '../queues'
+import { prisma } from '../config/prisma.js'
+import { logger } from '../config/logger.js'
+import { invoicePaidPayloadSchema, type InvoicePaidPayload } from '../queues.js'
 
 // Fires when the backend marks an invoice paid. Creates a
 // PAYMENT_RECEIVED notification for every owner/manager.

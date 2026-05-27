@@ -1,8 +1,8 @@
-import { env } from './config/env'
-import { logger } from './config/logger'
-import { disconnectPrisma } from './config/prisma'
-import { buildBot } from './bot'
-import { makeTelegramSendWorker } from './queues/telegram-send'
+import { env } from './config/env.js'
+import { logger } from './config/logger.js'
+import { disconnectPrisma } from './config/prisma.js'
+import { buildBot } from './bot.js'
+import { makeTelegramSendWorker } from './queues/telegram-send.js'
 
 const bot = buildBot()
 const sendWorker = makeTelegramSendWorker(bot)

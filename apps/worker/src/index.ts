@@ -1,14 +1,14 @@
 import { Queue, Worker, type Job } from 'bullmq'
-import { env } from './config/env'
-import { logger } from './config/logger'
-import { redisConnection } from './config/redis'
-import { disconnectPrisma } from './config/prisma'
+import { env } from './config/env.js'
+import { logger } from './config/logger.js'
+import { redisConnection } from './config/redis.js'
+import { disconnectPrisma } from './config/prisma.js'
 import {
   OVERDUE_CHECK_QUEUE, INVOICE_PAID_QUEUE,
   type OverdueCheckPayload, type InvoicePaidPayload,
-} from './queues'
-import { processOverdueCheck } from './jobs/daily-overdue-check'
-import { processInvoicePaid } from './jobs/invoice-paid'
+} from './queues.js'
+import { processOverdueCheck } from './jobs/daily-overdue-check.js'
+import { processInvoicePaid } from './jobs/invoice-paid.js'
 
 const connection = redisConnection()
 

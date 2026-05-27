@@ -3,8 +3,8 @@
 // REDIS_URL is missing (so the API still works in tests).
 
 import { Queue } from 'bullmq'
-import { env } from '../config/env'
-import { logger } from '../config/logger'
+import { env } from '../config/env.js'
+import { logger } from '../config/logger.js'
 
 // Keep these queue names in sync with the consumers:
 //   apps/worker/src/queues.ts

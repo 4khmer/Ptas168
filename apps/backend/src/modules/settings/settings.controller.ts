@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { settingsService } from './settings.service'
-import { updateSettingsSchema } from './settings.schema'
+import { settingsService } from './settings.service.js'
+import { updateSettingsSchema } from './settings.schema.js'
 
 export const settingsController = {
   async list(_req: Request, res: Response): Promise<void> {

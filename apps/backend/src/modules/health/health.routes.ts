@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { prisma } from '../../lib/prisma'
-import { asyncHandler } from '../../middleware/async-handler'
+import { prisma } from '../../lib/prisma.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const healthRouter = Router()
 

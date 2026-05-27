@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Database layer — owns prisma/schema.prisma + migrations + seeds. Apps depend on this to share the schema and run `prisma generate` exactly once.",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist", "src", "prisma"],

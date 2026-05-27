@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { floorsController } from './floors.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { floorsController } from './floors.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 // /api/floors — listing + update + delete
 export const floorsRouter = Router()

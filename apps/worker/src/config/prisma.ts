@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { env } from './env'
-import { logger } from './logger'
+import { env } from './env.js'
+import { logger } from './logger.js'
 
 // The worker connects to the same Postgres the backend uses. The Prisma
 // client is shared via the workspace's hoisted @prisma/client; both apps

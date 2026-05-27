@@ -1,5 +1,5 @@
 import type { User } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const authRepository = {
   count: (): Promise<number> => prisma.user.count(),

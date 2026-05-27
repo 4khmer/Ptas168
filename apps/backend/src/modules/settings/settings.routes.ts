@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { settingsController } from './settings.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { settingsController } from './settings.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const settingsRouter = Router()
 settingsRouter.use(authMiddleware)

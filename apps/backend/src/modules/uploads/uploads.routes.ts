@@ -3,11 +3,11 @@ import multer from 'multer'
 import path from 'node:path'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
-import { uploadsController } from './uploads.controller'
-import { ValidationError } from '../../utils/errors'
-import { env } from '../../config/env'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
+import { uploadsController } from './uploads.controller.js'
+import { ValidationError } from '../../utils/errors.js'
+import { env } from '../../config/env.js'
 
 const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])

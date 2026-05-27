@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { meterReadingsController } from './meterReadings.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { meterReadingsController } from './meterReadings.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const meterReadingsRouter = Router({ mergeParams: true })
 meterReadingsRouter.use(authMiddleware)

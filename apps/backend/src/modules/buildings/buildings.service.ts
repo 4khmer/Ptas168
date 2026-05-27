@@ -1,7 +1,7 @@
-import { NotFoundError } from '../../utils/errors'
-import { toBuildingDto, type BuildingDto } from '../../utils/adapters'
-import { buildingsRepository } from './buildings.repository'
-import type { CreateBuildingInput, UpdateBuildingInput } from './buildings.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toBuildingDto, type BuildingDto } from '../../utils/adapters.js'
+import { buildingsRepository } from './buildings.repository.js'
+import type { CreateBuildingInput, UpdateBuildingInput } from './buildings.schema.js'
 
 export const buildingsService = {
   async list(): Promise<BuildingDto[]> {

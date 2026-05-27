@@ -1,7 +1,7 @@
-import { buildApp } from './app'
-import { env } from './config/env'
-import { logger } from './config/logger'
-import { disconnectPrisma } from './lib/prisma'
+import { buildApp } from './app.js'
+import { env } from './config/env.js'
+import { logger } from './config/logger.js'
+import { disconnectPrisma } from './lib/prisma.js'
 
 const app = buildApp()
 

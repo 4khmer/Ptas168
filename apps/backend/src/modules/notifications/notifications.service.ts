@@ -1,5 +1,5 @@
-import { toNotificationDto, type NotificationDto } from '../../utils/adapters'
-import { notificationsRepository } from './notifications.repository'
+import { toNotificationDto, type NotificationDto } from '../../utils/adapters.js'
+import { notificationsRepository } from './notifications.repository.js'
 
 export const notificationsService = {
   async list(userId: string, opts: { take?: number; onlyUnread?: boolean }): Promise<{ data: NotificationDto[] }> {

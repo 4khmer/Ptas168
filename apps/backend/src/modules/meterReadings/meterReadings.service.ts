@@ -1,8 +1,8 @@
-import { NotFoundError } from '../../utils/errors'
-import { toMeterReadingDto, type MeterReadingDto } from '../../utils/adapters'
-import { roomsRepository } from '../rooms/rooms.repository'
-import { meterReadingsRepository } from './meterReadings.repository'
-import type { CreateMeterReadingInput } from './meterReadings.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toMeterReadingDto, type MeterReadingDto } from '../../utils/adapters.js'
+import { roomsRepository } from '../rooms/rooms.repository.js'
+import { meterReadingsRepository } from './meterReadings.repository.js'
+import type { CreateMeterReadingInput } from './meterReadings.schema.js'
 
 export interface LatestMeterReadingDto {
   serviceType: 'WATER' | 'ELECTRICITY'

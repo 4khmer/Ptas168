@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs'
-import { NotFoundError } from '../../utils/errors'
-import { toUserDto, type UserDto } from '../../utils/adapters'
-import { usersRepository } from './users.repository'
-import type { CreateUserInput, UpdateUserInput } from './users.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toUserDto, type UserDto } from '../../utils/adapters.js'
+import { usersRepository } from './users.repository.js'
+import type { CreateUserInput, UpdateUserInput } from './users.schema.js'
 
 export const usersService = {
   async listSubUsers(): Promise<UserDto[]> {

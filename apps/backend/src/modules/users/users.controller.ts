@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { usersService } from './users.service'
-import { createUserSchema, updateUserSchema } from './users.schema'
+import { usersService } from './users.service.js'
+import { createUserSchema, updateUserSchema } from './users.schema.js'
 
 export const usersController = {
   async list(_req: Request, res: Response): Promise<void> {

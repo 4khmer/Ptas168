@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Pure parsers for bank payment-confirmation text (ABA, ACLEDA, …). No deps, no I/O — both apps/backend and apps/telegram-bot consume.",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist", "src"],

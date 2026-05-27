@@ -1,8 +1,8 @@
-import { NotFoundError } from '../../utils/errors'
-import { toRoomDto, type RoomDto } from '../../utils/adapters'
-import { floorsRepository } from '../floors/floors.repository'
-import { roomsRepository, type RoomWithRelations } from './rooms.repository'
-import type { CreateRoomInput, UpdateRoomInput } from './rooms.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toRoomDto, type RoomDto } from '../../utils/adapters.js'
+import { floorsRepository } from '../floors/floors.repository.js'
+import { roomsRepository, type RoomWithRelations } from './rooms.repository.js'
+import type { CreateRoomInput, UpdateRoomInput } from './rooms.schema.js'
 
 // Billing cycle is anchored on the contract's start-date anniversary, not
 // the calendar month. Start Bill unlocks in the last `START_BILL_WINDOW`

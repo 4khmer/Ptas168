@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
-import { UnauthorizedError } from '../../utils/errors'
-import { notificationsService } from './notifications.service'
-import { listNotificationsQuery } from './notifications.schema'
+import { UnauthorizedError } from '../../utils/errors.js'
+import { notificationsService } from './notifications.service.js'
+import { listNotificationsQuery } from './notifications.schema.js'
 
 function requireUser(req: Request): string {
   if (!req.user) throw new UnauthorizedError()

@@ -1,5 +1,5 @@
-import { redis } from '../config/redis'
-import { logger } from '../config/logger'
+import { redis } from '../config/redis.js'
+import { logger } from '../config/logger.js'
 
 // Keys MUST match what the backend writes:
 //   apps/backend/src/modules/telegramLinks/telegramLinks.service.ts

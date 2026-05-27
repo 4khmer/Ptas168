@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { tenantsController } from './tenants.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { tenantsController } from './tenants.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const tenantsRouter = Router()
 tenantsRouter.use(authMiddleware)

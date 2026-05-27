@@ -1,9 +1,9 @@
 import { Bot, type Context } from 'grammy'
-import { env } from './config/env'
-import { logger } from './config/logger'
-import { prisma } from './config/prisma'
-import { consumeLinkCode, consumeNotificationCode } from './lib/link-codes'
-import { ingestBankPaymentFromText } from './lib/ingest-bank-payment'
+import { env } from './config/env.js'
+import { logger } from './config/logger.js'
+import { prisma } from './config/prisma.js'
+import { consumeLinkCode, consumeNotificationCode } from './lib/link-codes.js'
+import { ingestBankPaymentFromText } from './lib/ingest-bank-payment.js'
 
 // Regex matches mirror the legacy backend webhook:
 //   /link <6-10 digits>

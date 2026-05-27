@@ -1,7 +1,7 @@
 import { Job } from 'bullmq'
-import { prisma } from '../config/prisma'
-import { logger } from '../config/logger'
-import { overdueCheckPayloadSchema, type OverdueCheckPayload } from '../queues'
+import { prisma } from '../config/prisma.js'
+import { logger } from '../config/logger.js'
+import { overdueCheckPayloadSchema, type OverdueCheckPayload } from '../queues.js'
 
 // Find invoices that are progress + dueDate has passed, and create an
 // OVERDUE_INVOICE notification for each owner-role user — but only if a

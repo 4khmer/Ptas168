@@ -1,9 +1,9 @@
 import jwt, { type SignOptions } from 'jsonwebtoken'
-import { env } from '../config/env'
-import { UnauthorizedError } from './errors'
+import { env } from '../config/env.js'
+import { UnauthorizedError } from './errors.js'
 import type { JwtPayload } from '@ptas/contracts'
 
-// Re-export so existing consumers can keep `import { JwtPayload } from '../utils/jwt'`.
+// Re-export so existing consumers can keep `import { JwtPayload } from '../utils/jwt.js'`.
 export type { JwtPayload }
 
 export function signJwt(payload: JwtPayload): string {

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { roomServicesService } from './roomServices.service'
-import { setRoomServicesSchema } from './roomServices.schema'
+import { roomServicesService } from './roomServices.service.js'
+import { setRoomServicesSchema } from './roomServices.schema.js'
 
 export const roomServicesController = {
   async list(req: Request, res: Response): Promise<void> {

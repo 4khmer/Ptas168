@@ -1,5 +1,5 @@
 import type { BankNotificationGroup } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const bankNotificationGroupsRepository = {
   list: (): Promise<BankNotificationGroup[]> =>

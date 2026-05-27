@@ -1,6 +1,6 @@
 import type { BankPayment } from '@prisma/client'
-import { toBankPaymentDto, type BankPaymentDto } from '../../utils/adapters'
-import { bankPaymentsRepository } from './bankPayments.repository'
+import { toBankPaymentDto, type BankPaymentDto } from '../../utils/adapters.js'
+import { bankPaymentsRepository } from './bankPayments.repository.js'
 import { parseBankPayment } from '@ptas/bank-parsers'
 
 export const bankPaymentsService = {

@@ -1,8 +1,8 @@
 import crypto from 'node:crypto'
-import { bankNotificationGroupsRepository } from './bankNotificationGroups.repository'
-import { NotFoundError } from '../../utils/errors'
-import { redis } from '../../lib/redis'
-import { logger } from '../../config/logger'
+import { bankNotificationGroupsRepository } from './bankNotificationGroups.repository.js'
+import { NotFoundError } from '../../utils/errors.js'
+import { redis } from '../../lib/redis.js'
+import { logger } from '../../config/logger.js'
 
 const CODE_TTL_SECONDS = 10 * 60
 const CODE_LENGTH = 6

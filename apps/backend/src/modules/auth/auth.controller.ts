@@ -1,13 +1,13 @@
 import type { Request, Response } from 'express'
-import { authService } from './auth.service'
+import { authService } from './auth.service.js'
 import {
   changePasswordSchema,
   loginCredentialsSchema,
   loginTelegramSchema,
   registerSchema,
   updateProfileSchema,
-} from './auth.schema'
-import { UnauthorizedError } from '../../utils/errors'
+} from './auth.schema.js'
+import { UnauthorizedError } from '../../utils/errors.js'
 
 export const authController = {
   async register(req: Request, res: Response): Promise<void> {

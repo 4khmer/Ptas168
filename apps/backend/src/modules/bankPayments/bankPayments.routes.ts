@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { bankPaymentsController } from './bankPayments.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { bankPaymentsController } from './bankPayments.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const bankPaymentsRouter = Router()
 

@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceLineItem, Prisma } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export type InvoiceWithItems = Invoice & { lineItems: InvoiceLineItem[] }
 

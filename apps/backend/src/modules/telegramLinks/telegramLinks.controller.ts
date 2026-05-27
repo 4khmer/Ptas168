@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { telegramLinksService } from './telegramLinks.service'
-import { NotFoundError, ValidationError } from '../../utils/errors'
+import { telegramLinksService } from './telegramLinks.service.js'
+import { NotFoundError, ValidationError } from '../../utils/errors.js'
 
 export const telegramLinksController = {
   async list(_req: Request, res: Response): Promise<void> {

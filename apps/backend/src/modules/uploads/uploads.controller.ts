@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { ValidationError } from '../../utils/errors'
-import { env } from '../../config/env'
+import { ValidationError } from '../../utils/errors.js'
+import { env } from '../../config/env.js'
 
 // Falls back to host-relative /uploads so dev works even without FILE_URL_BASE
 // configured. In production FILE_URL_BASE points at Tomcat's public path.

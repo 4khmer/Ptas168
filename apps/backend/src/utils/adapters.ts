@@ -17,7 +17,7 @@ import type {
   InvoiceDto, NotificationDto, UserDto, BankPaymentDto,
 } from '@ptas/contracts'
 
-// Re-export so legacy `import { XxxDto } from '../utils/adapters'` keeps working.
+// Re-export so legacy `import { XxxDto } from '../utils/adapters.js'` keeps working.
 export type {
   BuildingDto, FloorDto, RoomDto, RoomAssetDto,
   TenantDto, TenantDocumentDto, ContractDto,

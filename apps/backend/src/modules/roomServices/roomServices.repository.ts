@@ -1,5 +1,5 @@
 import type { RoomService, ServiceFee } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export type RoomServiceWithFee = RoomService & { serviceFee: ServiceFee }
 

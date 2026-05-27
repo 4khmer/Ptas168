@@ -1,5 +1,5 @@
 import type { Floor } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const floorsRepository = {
   list: (buildingId?: string): Promise<Floor[]> =>

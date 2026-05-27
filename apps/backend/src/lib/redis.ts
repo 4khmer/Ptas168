@@ -3,8 +3,8 @@
 // own connections internally — see lib/queue.ts.
 
 import { Redis } from 'ioredis'
-import { env } from '../config/env'
-import { logger } from '../config/logger'
+import { env } from '../config/env.js'
+import { logger } from '../config/logger.js'
 
 let client: Redis | null = null
 

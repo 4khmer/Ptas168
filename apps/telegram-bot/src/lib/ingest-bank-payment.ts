@@ -1,6 +1,6 @@
 import { parseBankPayment } from '@ptas/bank-parsers'
 import type { BankPayment } from '@prisma/client'
-import { prisma } from '../config/prisma'
+import { prisma } from '../config/prisma.js'
 
 // Local Prisma-backed version of backend's bankPaymentsService.ingestFromText.
 // The bot owns this writes-side path entirely — the backend's HTTP service

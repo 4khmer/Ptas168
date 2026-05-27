@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { telegramLinksController } from './telegramLinks.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { telegramLinksController } from './telegramLinks.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const telegramLinksRouter = Router()
 telegramLinksRouter.use(authMiddleware)

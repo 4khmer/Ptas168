@@ -1,9 +1,9 @@
 import crypto from 'node:crypto'
-import { telegramLinksRepository, type TelegramLinkWithRoom } from './telegramLinks.repository'
-import { roomsRepository } from '../rooms/rooms.repository'
-import { NotFoundError } from '../../utils/errors'
-import { redis } from '../../lib/redis'
-import { logger } from '../../config/logger'
+import { telegramLinksRepository, type TelegramLinkWithRoom } from './telegramLinks.repository.js'
+import { roomsRepository } from '../rooms/rooms.repository.js'
+import { NotFoundError } from '../../utils/errors.js'
+import { redis } from '../../lib/redis.js'
+import { logger } from '../../config/logger.js'
 
 const CODE_TTL_SECONDS = 10 * 60
 const CODE_LENGTH = 6

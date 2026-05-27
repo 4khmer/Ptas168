@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { UnauthorizedError } from '../../utils/errors'
+import { UnauthorizedError } from '../../utils/errors.js'
 
 export interface TelegramUser {
   id: number

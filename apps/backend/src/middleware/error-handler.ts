@@ -1,9 +1,9 @@
 import type { ErrorRequestHandler } from 'express'
 import { ZodError } from 'zod'
 import { Prisma } from '@prisma/client'
-import { AppError } from '../utils/errors'
-import { env } from '../config/env'
-import { logger } from '../config/logger'
+import { AppError } from '../utils/errors.js'
+import { env } from '../config/env.js'
+import { logger } from '../config/logger.js'
 import type { ErrorEnvelope, ErrorCode } from '@ptas/contracts'
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {

@@ -1,9 +1,9 @@
-import { NotFoundError } from '../../utils/errors'
-import { toRoomServiceDto, type RoomServiceDto } from '../../utils/adapters'
-import { prisma } from '../../lib/prisma'
-import { roomsRepository } from '../rooms/rooms.repository'
-import { roomServicesRepository } from './roomServices.repository'
-import type { SetRoomServicesInput } from './roomServices.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toRoomServiceDto, type RoomServiceDto } from '../../utils/adapters.js'
+import { prisma } from '../../lib/prisma.js'
+import { roomsRepository } from '../rooms/rooms.repository.js'
+import { roomServicesRepository } from './roomServices.repository.js'
+import type { SetRoomServicesInput } from './roomServices.schema.js'
 
 function parsePriceOverride(v: number | string | null | undefined): number | null {
   if (v === null || v === undefined || v === '') return null

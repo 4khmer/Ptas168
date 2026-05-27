@@ -1,5 +1,5 @@
 import type { Setting } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const settingsRepository = {
   list: (): Promise<Setting[]> => prisma.setting.findMany(),

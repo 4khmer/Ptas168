@@ -1,5 +1,5 @@
 import type { Prisma, User } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export const usersRepository = {
   // Sub-users only — owner is filtered out

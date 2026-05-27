@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { notificationsController } from './notifications.controller'
-import { authMiddleware } from '../../middleware/auth.middleware'
-import { asyncHandler } from '../../middleware/async-handler'
+import { notificationsController } from './notifications.controller.js'
+import { authMiddleware } from '../../middleware/auth.middleware.js'
+import { asyncHandler } from '../../middleware/async-handler.js'
 
 export const notificationsRouter = Router()
 notificationsRouter.use(authMiddleware)

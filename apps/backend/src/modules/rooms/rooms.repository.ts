@@ -1,5 +1,5 @@
 import { Prisma, type Building, type Contract, type Floor, type Invoice, type Room } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../lib/prisma.js'
 
 export type RoomWithRelations = Room & {
   floor: Floor

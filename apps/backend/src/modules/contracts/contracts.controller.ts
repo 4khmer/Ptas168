@@ -1,11 +1,11 @@
 import type { Request, Response } from 'express'
-import { contractsService } from './contracts.service'
+import { contractsService } from './contracts.service.js'
 import {
   addTenantToRoomSchema,
   listContractsQuery,
   terminateContractSchema,
   updateContractSchema,
-} from './contracts.schema'
+} from './contracts.schema.js'
 
 export const contractsController = {
   async list(req: Request, res: Response): Promise<void> {

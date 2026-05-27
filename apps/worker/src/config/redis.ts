@@ -1,5 +1,5 @@
-import { env } from './env'
-import { logger } from './logger'
+import { env } from './env.js'
+import { logger } from './logger.js'
 
 // BullMQ takes a connection-options object (host/port/...) rather than an
 // IORedis instance. This parses our REDIS_URL into that shape so Queue,

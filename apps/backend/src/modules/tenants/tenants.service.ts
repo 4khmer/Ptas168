@@ -1,8 +1,8 @@
-import { NotFoundError } from '../../utils/errors'
-import { toTenantDto, type TenantDto } from '../../utils/adapters'
-import { prisma } from '../../lib/prisma'
-import { tenantsRepository } from './tenants.repository'
-import type { CreateTenantInput, UpdateTenantInput } from './tenants.schema'
+import { NotFoundError } from '../../utils/errors.js'
+import { toTenantDto, type TenantDto } from '../../utils/adapters.js'
+import { prisma } from '../../lib/prisma.js'
+import { tenantsRepository } from './tenants.repository.js'
+import type { CreateTenantInput, UpdateTenantInput } from './tenants.schema.js'
 
 export const tenantsService = {
   async list(): Promise<TenantDto[]> {
