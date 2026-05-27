@@ -1,159 +1,190 @@
 # CLAUDE.md
 
-This file is auto-loaded into Claude's context. Sub-app CLAUDE.md files are **not** auto-loaded — read them on demand when the work touches that app.
+This file is auto-loaded into Claude's context. Sub-app `CLAUDE.md` files are **not** auto-loaded — read them on demand when the work touches that app.
 
 ## Project
 
-**PTAS168** — Property management system (originally a Telegram Mini App). Two private repos under the `4khmer` GitHub org, unified into this Turborepo monorepo.
+**PTAS168** — Property management system (Telegram Mini App + REST API). Originally two private repos under the `4khmer` GitHub org, unified into this Turborepo monorepo at https://github.com/4khmer/Ptas168.
 
 ## Layout
 
 ```
 ptas168/
 ├── apps/
-│   ├── backend/                    Express + TypeScript + Prisma 5 + PostgreSQL
+│   ├── backend/                    Express + TypeScript + Prisma 5 + PostgreSQL — :3001
 │   │   └── CLAUDE.md               READ THIS before touching backend code
-│   └── frontend/                   Vite + React 18 + Zustand (plain JS, not TS)
-│       └── CLAUDE.md               READ THIS before touching frontend code
+│   ├── frontend/                   Vite + React 18 + Zustand (plain JS, not TS) — :8080
+│   │   └── CLAUDE.md               READ THIS before touching frontend code
+│   ├── worker/                     BullMQ jobs: cron + event-driven (no HTTP surface)
+│   └── telegram-bot/               grammy long-polling + BullMQ consumer (no HTTP surface)
 ├── packages/
-│   └── contracts/                  @ptas/contracts — shared Zod schemas + TS types
-│                                   (Phase 3 in progress; only enums extracted so far)
+│   ├── contracts/                  @ptas/contracts — Zod schemas + TS types (pure, no logic)
+│   │   └── CLAUDE.md               extract rules + NodeNext quirk
+│   ├── sdk/                        @ptas/sdk — frontend's typed HTTP client + adapters
+│   └── bank-parsers/               @ptas/bank-parsers — pure bank-text parsers (ABA, …)
 ├── infrastructure/
 │   └── docker/
 │       └── docker-compose.yml      Postgres 16 + Redis 7 for local dev
 ├── pnpm-workspace.yaml
 ├── turbo.json
-├── MIGRATION_ANALYSIS.md           Phase 1+2 report; §7 lists Phase 3 sequencing
+├── MIGRATION_ANALYSIS.md           Phase 1+2 inventory (still useful as a map)
 └── package.json
 ```
 
-Future packages from the migration plan: `validation`, `sdk`. Future apps may include BullMQ workers, Telegram bot service, AI assistant service.
+Three runtime processes share Postgres + Redis: **backend** (HTTP), **worker** (BullMQ consumer), **telegram-bot** (BullMQ consumer + Telegram polling). The frontend is a static bundle the browser runs.
 
 ## Commands you'll use most
 
 ```bash
-pnpm db:up                          # start postgres + redis containers
-pnpm db:down                        # stop them (data preserved)
-pnpm db:reset                       # nuke volumes + restart
-pnpm db:psql                        # psql shell into the docker DB
-pnpm db:logs                        # follow container logs
+# infra
+pnpm db:up                                # start postgres + redis containers
+pnpm db:down                              # stop (data preserved in named volumes)
+pnpm db:reset                             # nuke volumes + restart
+pnpm db:psql                              # psql shell into the docker DB
+pnpm db:logs                              # follow container logs
 
-pnpm dev:backend                    # api on http://localhost:3001
-pnpm dev:frontend                   # vite on http://localhost:8080/Ptas168_Frontend/
+# dev — each process in its own terminal
+pnpm dev:backend                          # api on http://localhost:3001
+pnpm dev:frontend                         # vite on http://localhost:8080/Ptas168_Frontend/
+pnpm --filter @ptas/worker dev            # BullMQ worker (overdue cron + invoice-paid)
+pnpm --filter @ptas/telegram-bot dev      # grammy bot (stub mode without TELEGRAM_BOT_TOKEN)
+
+# build everything (turbo orchestrates contracts → sdk → bank-parsers → apps)
+pnpm turbo run build
 
 # from apps/backend
-pnpm prisma migrate dev --name <x>  # create + apply migration
-pnpm prisma studio                  # http://localhost:5555
-pnpm prisma:seed                    # bootstrap (admin user + system services + settings)
-pnpm prisma:demo-seed               # full demo dataset (idempotent, all demo-* ids)
+pnpm prisma migrate dev --name <x>        # create + apply migration
+pnpm prisma studio                        # http://localhost:5555
+pnpm prisma:seed                          # bootstrap admin user + system services + settings
+pnpm prisma:demo-seed                     # demo dataset (idempotent demo-* ids)
 ```
 
 ## Dev login
 
-`admin` / `admin123` (seeded by `pnpm prisma:seed`).
+`admin` / `admin123` (seeded by `pnpm prisma:seed`). **Do not ship this to production** — `prisma:seed` is dev-only.
 
 ## Environment
 
 - pnpm 11.3 via Corepack (Node ≥ 20)
-- `gh` CLI is installed and authenticated as `KheangZinII` — can clone 4khmer org private repos directly with `gh repo clone 4khmer/<name>`
+- `gh` CLI authenticated as `KheangZinII` — `gh repo clone 4khmer/<name>` works for the org's private repos
 - Docker Desktop required for the local DB stack
-- Backend env in [apps/backend/.env.development](apps/backend/.env.development) and [apps/backend/.env](apps/backend/.env) (the bare `.env` exists only so the Prisma CLI can resolve `DATABASE_URL`; the running backend reads `.env.development`)
+- **Env files per process** (each loads `.env.development` / `.env.production` based on `NODE_ENV`):
+  - [apps/backend/.env.development](apps/backend/.env.development) — `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TELEGRAM_BANK_BOT_TOKEN`, …
+  - [apps/backend/.env](apps/backend/.env) — bare file for the Prisma CLI only (the runtime uses `.env.development`)
+  - [apps/worker/.env.development](apps/worker/.env.development) — `DATABASE_URL`, `REDIS_URL`, `OVERDUE_CRON`
+  - [apps/telegram-bot/.env.development](apps/telegram-bot/.env.development) — `DATABASE_URL`, `REDIS_URL`, `TELEGRAM_BOT_TOKEN` (leave empty for stub mode)
+  - [apps/frontend/.env.production](apps/frontend/.env.production) — `VITE_API_URL`, `VITE_FILE_URL`
 
-## Current state of the migration
+## Current architecture (post-migration)
 
-| Phase | Status | Notes |
+| Layer | Package/App | What it does |
 |---|---|---|
-| 1. pnpm + Turborepo skeleton | ✅ | both apps build and dev-boot |
-| 2. Codebase analysis | ✅ | [MIGRATION_ANALYSIS.md](MIGRATION_ANALYSIS.md) |
-| 3. `packages/contracts` | 🟡 in progress | enums extracted ([packages/contracts/src/enums.ts](packages/contracts/src/enums.ts)); one backend usage swapped at [apps/backend/src/modules/serviceFees/serviceFees.schema.ts](apps/backend/src/modules/serviceFees/serviceFees.schema.ts); next per §7 of the analysis: `error.ts` then `BuildingDto` |
-| 4. `packages/validation` | ⏳ | shared Zod schemas (backend = request validation, frontend = form validation; frontend has zero validation libs today) |
-| 5. `packages/sdk` | ⏳ | wraps backend API; future home for frontend adapters (`adaptInvoice`, `groupMeterReadings`, `parseInvoiceSettings`) |
+| Wire-format contracts | `@ptas/contracts` | All Zod schemas + DTO types. **No logic.** Both reads and writes flow through these. |
+| HTTP client | `@ptas/sdk` | The frontend's only path to the backend. Wraps fetch, owns the 3 wire→UI adapters (`adaptInvoice`, `groupMeterReadings`, `parseInvoiceSettings`). ESM. |
+| Bank parsers | `@ptas/bank-parsers` | Pure regex-based parsers for bank confirmation text. Shared by backend (`/api/bank-payments` list) and bot (raw-message ingestion). |
+| API | `apps/backend` | Express + Prisma. Reads/writes the DB. Mints Telegram link codes to Redis. Enqueues BullMQ jobs. **No Telegram credentials.** |
+| Async jobs | `apps/worker` | Two BullMQ workers: `overdue-check` (cron, default 09:00 daily) and `invoice-paid` (event-driven from backend). The only notification producer in the system. |
+| Telegram | `apps/telegram-bot` | grammy long-polling. Consumes `telegram-send` BullMQ queue for outbound. Owns its own Prisma client. Owns the bot token. |
+| Web | `apps/frontend` | Vite + React 18 + Zustand. No validation libs except Zod (via `@ptas/contracts` schemas in modal forms). |
+| DB + queues | `infrastructure/docker` | Postgres 16 + Redis 7 with named volumes, healthchecks, 127.0.0.1-bound. |
 
-## Hard constraints (from the user, repeat on every phase)
+Cross-process communication is **Redis only** (BullMQ queues + the `tg:link-code:*` / `tg:notify-code:*` keys). No process makes HTTP calls to another.
+
+## Hard constraints (load-bearing — repeat for every change)
 
 - **Do not** break either app
 - **Do not** rewrite business logic
 - **Do not** change Prisma schema unnecessarily
-- Every phase must keep both apps runnable; migration is **incremental and reversible**
+- Every change must keep all processes runnable; migrations are **incremental and reversible**
 
-## Never confuse frontend with backend
+## Never confuse the apps
 
-This is a monorepo with two very different apps. Before editing code, **always know which app you're in.** When a request is ambiguous (e.g., "fix the invoice bug", "add validation to rooms"), state the assumption explicitly and confirm before changing anything.
+Five distinct runtime contexts, two distinct languages. Before editing code, **always know which app you're in.** When a request is ambiguous, state the assumption explicitly and confirm before changing anything.
 
 ### At-a-glance contrast
 
-|  | `apps/backend` | `apps/frontend` |
-|---|---|---|
-| Language | **TypeScript** (strict) | **JavaScript** (no TS — `.js`/`.jsx`) |
-| Module system | CommonJS (`"type": "commonjs"`) | ESM (`"type": "module"`) |
-| Runtime | Node ≥ 20 (`tsx watch` / `node dist/server.js`) | Browser via Vite (`vite`) |
-| Stack | Express 4, Prisma 5, Zod, pino, jsonwebtoken, bcryptjs | React 18, Zustand, react-router-dom, Tailwind, lucide-react |
-| Persistence | PostgreSQL via Prisma | `localStorage` (`pbms_token`, `pbms_lang`) + Zustand in-memory |
-| Port | `:3001` | `:8080` (Vite, base path `/Ptas168_Frontend/`) |
-| Entry | [src/server.ts](apps/backend/src/server.ts) | [src/main.jsx](apps/frontend/src/main.jsx) |
-| Build | `tsc → dist/` | `vite build → dist/` |
+|  | `apps/backend` | `apps/frontend` | `apps/worker` | `apps/telegram-bot` |
+|---|---|---|---|---|
+| Language | **TypeScript** strict | **JavaScript** (.js/.jsx) | TypeScript | TypeScript |
+| Module system | CommonJS | ESM | CommonJS | CommonJS |
+| Runtime | Node ≥ 20 (Express) | Browser (Vite) | Node ≥ 20 (BullMQ) | Node ≥ 20 (grammy + BullMQ) |
+| Persistence | Postgres via Prisma | localStorage + Zustand | Postgres + Redis | Postgres + Redis |
+| Port | `:3001` | `:8080` (base `/Ptas168_Frontend/`) | none (no HTTP) | none (no HTTP) |
+| Entry | [src/server.ts](apps/backend/src/server.ts) | [src/main.jsx](apps/frontend/src/main.jsx) | [src/index.ts](apps/worker/src/index.ts) | [src/index.ts](apps/telegram-bot/src/index.ts) |
 
 ### Where each concept lives — never mix these up
 
 | Concept | Lives **only** in |
 |---|---|
 | Prisma schema, migrations, seeds | `apps/backend/prisma/` |
-| `@prisma/client`, DB queries | `apps/backend/src/modules/<domain>/<domain>.repository.ts` |
-| Route handlers, controllers, services | `apps/backend/src/modules/<domain>/` |
-| Zod schemas (today) | `apps/backend/src/modules/<domain>/<domain>.schema.ts` — frontend has zero validation libs |
+| `@prisma/client` DB queries | `apps/backend/src/modules/<domain>/<domain>.repository.ts`, plus `apps/worker/src/` and `apps/telegram-bot/src/` for those processes |
+| Wire types + Zod schemas | `packages/contracts/src/*.ts` (single source of truth for both ends) |
+| HTTP route handlers, controllers, services | `apps/backend/src/modules/<domain>/` |
 | JWT signing / `Bearer` verification | `apps/backend/src/utils/jwt.ts` + middleware |
-| Express middleware, async handlers | `apps/backend/src/middleware/` |
-| pino logging | `apps/backend` |
 | **Prisma row → wire DTO** adapters | `apps/backend/src/utils/adapters.ts` |
-| **Wire DTO → UI shape** adapters | `apps/frontend/src/api/*.js` (`adaptInvoice`, `groupMeterReadings`, `parseInvoiceSettings`) |
+| **Wire DTO → UI shape** adapters | `packages/sdk/src/adapters/` (`adaptInvoice`, `groupMeterReadings`, `parseInvoiceSettings`) |
+| Frontend HTTP wrapper | `packages/sdk/src/http/client.ts` + `apps/frontend/src/sdk.js` (consumer init) |
 | Zustand store | `apps/frontend/src/store/index.js` |
 | Page components, modals, UI primitives | `apps/frontend/src/{pages,components}/` |
+| Form validation | each modal in `apps/frontend/src/components/modals/` imports from `@ptas/contracts` |
 | Tailwind tokens, CSS variables | `apps/frontend/tailwind.config.js`, `apps/frontend/src/index.css` |
-| `pbms_token` (JWT) read/write | `apps/frontend/src/api/client.js` |
+| `pbms_token` (JWT) read/write | `apps/frontend/src/sdk.js` (only here) |
 | Vite config, dev proxy | `apps/frontend/vite.config.js` |
+| BullMQ job processors | `apps/worker/src/jobs/` (overdue, invoice-paid) and `apps/telegram-bot/src/queues/` (telegram-send) |
+| BullMQ producers (enqueue) | `apps/backend/src/lib/queue.ts` |
+| Bank confirmation parsing | `packages/bank-parsers/src/` |
+| Telegram link-code mint | `apps/backend/src/modules/telegramLinks/telegramLinks.service.ts` (writes to Redis) |
+| Telegram link-code consume | `apps/telegram-bot/src/lib/link-codes.ts` (atomic GETDEL on Redis) |
+| Grammy handlers (`/link`, `/pay`, raw text) | `apps/telegram-bot/src/bot.ts` |
 
 ### Forbidden imports
 
-- Files under `apps/frontend/` **never** import from `apps/backend/`
-- Files under `apps/backend/` **never** import from `apps/frontend/`
-- Both may import from `packages/*` (currently only `@ptas/contracts`)
-- `packages/contracts` **never** imports from `apps/*` or any framework (Prisma, Express, React, …)
+- Files under `apps/frontend/` **never** import from `apps/backend/`, `apps/worker/`, or `apps/telegram-bot/`.
+- Files under `apps/backend/` **never** import from any other `apps/*`.
+- `apps/worker/` and `apps/telegram-bot/` may share **packages/** but never import from each other or from `apps/backend`.
+- All apps may import from `packages/*` (contracts, sdk, bank-parsers).
+- `packages/contracts` **never** imports from `apps/*` or any framework (Prisma, Express, React, grammy, BullMQ).
+- `packages/bank-parsers` **never** imports anything except `./types.js` — must stay pure.
 
 ### Triple-shape entities — name the shape you mean
 
 The same domain concept exists in three forms. Always say which:
 
-| Shape | Where | Example field difference |
+| Shape | Where | Example |
 |---|---|---|
 | **Prisma model** | `apps/backend/prisma/schema.prisma` | `Invoice.pricePerMonth`, `Tenant.photoUrl`, `Contract.startDate` |
-| **Wire DTO** (read response) | what the backend returns from `/api/*`, built by `apps/backend/src/utils/adapters.ts` | `Room.price`, `Tenant.photo`, `Contract.startDate` (sometimes renamed) |
-| **UI shape** | what the frontend Zustand store / pages consume after `adapt*` runs | `Invoice.tenantSnapshot/roomSnapshot`, `Invoice.total`, grouped meter readings |
+| **Wire DTO** | what the backend emits, defined in `@ptas/contracts` and built by `apps/backend/src/utils/adapters.ts` | `Room.price`, `Tenant.photo`, `Contract.startDate` |
+| **UI shape** | what `apps/frontend` consumes after the SDK's adapters run | `Invoice.tenantSnapshot/roomSnapshot/total`, grouped meter readings |
 
-A few entities also have a **write input shape** that differs from the read shape — see [MIGRATION_ANALYSIS.md §5](MIGRATION_ANALYSIS.md) (Tenants, Rooms, Contracts use `fullName`/`profilePhotoUrl`/`pricePerMonth`/`moveInDate` on write, but `name`/`photo`/`price`/`startDate` on read).
+Some entities have a **write input shape** distinct from the read shape — tenants use `fullName`/`profilePhotoUrl` on `POST`, but `name`/`photo` on the response. Same for rooms (`pricePerMonth` ↔ `price`) and contracts (`moveInDate` ↔ `startDate`). See [MIGRATION_ANALYSIS.md §5](MIGRATION_ANALYSIS.md) and the `*Input` / `*Dto` paired exports in `packages/contracts/`.
 
 ### When the request is ambiguous
 
-If the user says "fix the Invoice bug" or "add validation to the room form" without specifying which side:
-
 1. **State the assumption** ("I read this as a frontend issue because the symptom is in the UI — confirm?")
 2. **Don't touch code yet** until they confirm or redirect
-3. For data-flow bugs, **trace the call path** (frontend page → store action → api/*.js → backend route → repository → DB) and identify *where* the problem is before deciding *what* to change
+3. For data-flow bugs, **trace the call path** (frontend page → store action → `sdk.js` → backend route → repository → DB) and identify *where* the problem is before deciding *what* to change
 
 ### One real example — the Billing empty-list bug
 
-Earlier this session, the user reported "Billing displays count but no data." The instinct could be to check backend (`/invoices/page` query). But the backend was fine: the bug was a stale `loading: true` flag in [apps/frontend/src/store/index.js](apps/frontend/src/store/index.js#L433) that `resetPagedInvoices` failed to clear. **Frontend bug, frontend fix.** Diagnosing meant first verifying the backend returned data (it did via curl), then driving the frontend with Playwright to find where the state diverged. Always confirm which side before patching.
+The user reported "Billing displays count but no data." The instinct could be to check backend (`/invoices/page` query). But the backend was fine: the bug was a stale `loading: true` flag in [apps/frontend/src/store/index.js](apps/frontend/src/store/index.js) that `resetPagedInvoices` failed to clear. **Frontend bug, frontend fix.** Diagnosing meant first verifying the backend returned data (it did via curl), then driving the frontend with Playwright to find where the state diverged. Always confirm which side before patching.
 
 ## Codebase quirks worth knowing upfront
 
-- **Asymmetric write/read shapes** on the wire — `POST /tenants` takes `fullName`/`profilePhotoUrl`, response returns `name`/`photo`. Similarly for rooms (`pricePerMonth` ↔ `price`) and contracts (`moveInDate` ↔ `startDate`). Documented in [MIGRATION_ANALYSIS.md §5](MIGRATION_ANALYSIS.md). Each entity in `packages/contracts` needs paired `*Input` (write) and `*Dto` (read) shapes.
-- **Frontend adapters live in `apps/frontend/src/api/`** today (`adaptInvoice` in [invoices.js](apps/frontend/src/api/invoices.js), `groupMeterReadings` in [meterReadings.js](apps/frontend/src/api/meterReadings.js), `parseInvoiceSettings` in [settings.js](apps/frontend/src/api/settings.js)). These move to `packages/sdk` in Phase 5 — don't reimplement them in `contracts`.
-- **`tsx watch`** picks up `.env` file changes too — the dev backend hot-reloads even on env edits, occasionally producing stuck `node` processes on port 3001 (`pkill -f tsx` to clear).
+- **Asymmetric write/read shapes** on the wire — `POST /tenants` takes `fullName`/`profilePhotoUrl`, response returns `name`/`photo`. Same for rooms and contracts. Each affected entity in `@ptas/contracts` has paired `Create<X>Input` (write) and `<X>Dto` (read) exports.
+- **CJS contracts + ESM SDK** — `@ptas/contracts` is CJS (so the backend can synchronously `require` it), `@ptas/sdk` is ESM (so Rollup can tree-shake it on the frontend). The frontend's [vite.config.js](apps/frontend/vite.config.js) wires `optimizeDeps.include` and `build.commonjsOptions.include` for both — don't remove those without testing both dev and `vite build`.
+- **Telegram link codes share via Redis** — backend mints codes into `tg:link-code:<code>` (and `tg:notify-code:<code>`); the bot atomically consumes via `GETDEL`. **No in-memory state.** If you change the code-mint TTL in the backend, also update the messaging in [apps/telegram-bot/src/bot.ts](apps/telegram-bot/src/bot.ts).
+- **No notifications without the worker.** The backend never writes to the `notifications` table — only `apps/worker` does (via `daily-overdue-check` and `invoice-paid` handlers). If you're testing notifications locally, the worker must be running.
+- **Bot stub mode** — when `TELEGRAM_BOT_TOKEN` is empty, `apps/telegram-bot` skips grammy polling but still consumes the BullMQ `telegram-send` queue (logs "would have sent"). Useful for local dev without @BotFather.
+- **`tsx watch`** picks up `.env` file changes — the dev backend hot-reloads on env edits, occasionally leaving stuck `node` processes on port 3001 (`pkill -f tsx` to clear).
 - **Vite dev base path is `/Ptas168_Frontend/`** — anything that hardcodes `/` will break in dev.
 
-## When in doubt
+## When in doubt — read the per-app docs
 
-Read the relevant app's own `CLAUDE.md`:
-- [apps/backend/CLAUDE.md](apps/backend/CLAUDE.md) — module pattern, adapters, JWT/auth flow, business rules
-- [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md) — Zustand store layout, routing, styling tokens
-
-And [MIGRATION_ANALYSIS.md](MIGRATION_ANALYSIS.md) for everything the migration cares about.
+| Where | What you'll find there |
+|---|---|
+| [apps/backend/CLAUDE.md](apps/backend/CLAUDE.md) | module pattern, adapters, JWT/auth flow, business rules |
+| [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md) | Zustand store layout, routing, styling tokens |
+| [packages/contracts/CLAUDE.md](packages/contracts/CLAUDE.md) | extract rules + the NodeNext `.js` import quirk |
+| [apps/worker/](apps/worker/) | inline comments on the 2 job processors |
+| [apps/telegram-bot/](apps/telegram-bot/) | inline comments on grammy handlers and queue consumer |
+| [MIGRATION_ANALYSIS.md](MIGRATION_ANALYSIS.md) | original Phase 1+2 inventory, asymmetric shape catalog, priority lists |
