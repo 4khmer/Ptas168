@@ -7,7 +7,7 @@ export const bankNotificationGroupsController = {
   },
 
   async mintCode(_req: Request, res: Response): Promise<void> {
-    res.json(bankNotificationGroupsService.mintCode())
+    res.json(await bankNotificationGroupsService.mintCode())
   },
 
   async remove(req: Request, res: Response): Promise<void> {

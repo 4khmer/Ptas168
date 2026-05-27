@@ -1,7 +1,7 @@
 import type { BankPayment } from '@prisma/client'
 import { toBankPaymentDto, type BankPaymentDto } from '../../utils/adapters'
 import { bankPaymentsRepository } from './bankPayments.repository'
-import { parseBankPayment } from './parsers'
+import { parseBankPayment } from '@ptas/bank-parsers'
 
 export const bankPaymentsService = {
   async list(): Promise<BankPaymentDto[]> {

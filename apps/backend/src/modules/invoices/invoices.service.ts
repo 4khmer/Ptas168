@@ -9,10 +9,9 @@ import { meterReadingsRepository } from '../meterReadings/meterReadings.reposito
 import { settingsRepository } from '../settings/settings.repository'
 import { settingsService } from '../settings/settings.service'
 import { telegramLinksRepository } from '../telegramLinks/telegramLinks.repository'
-import { sendBotMessage } from '../telegramBot/telegramBot.client'
 import { invoicesRepository } from './invoices.repository'
 import { formatInvoiceForTelegram } from './invoices.formatter'
-import { enqueueInvoicePaid } from '../../lib/queue'
+import { enqueueInvoicePaid, enqueueTelegramSend } from '../../lib/queue'
 import type { CreateInvoiceInput, ListInvoicesPageInput, InvoiceCountsInput } from './invoices.schema'
 
 function daysBetween(a: Date, b: Date): number {
@@ -143,8 +142,11 @@ export const invoicesService = {
 
     const settings = await settingsService.getAll()
     const text = formatInvoiceForTelegram(inv, settings)
-    const sent = await sendBotMessage(link.chatId, text)
-    return { linked: true, sent }
+    // Fire-and-forget: apps/telegram-bot owns the bot token and actually
+    // calls Telegram. We return `sent: true` to mean "enqueued"; the
+    // worker retries on transient failures (attempts: 3).
+    await enqueueTelegramSend({ chatId: link.chatId, text })
+    return { linked: true, sent: true }
   },
 
   async create(input: CreateInvoiceInput): Promise<InvoiceDto> {

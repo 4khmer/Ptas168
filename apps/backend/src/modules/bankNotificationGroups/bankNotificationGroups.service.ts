@@ -1,14 +1,16 @@
 import crypto from 'node:crypto'
 import { bankNotificationGroupsRepository } from './bankNotificationGroups.repository'
 import { NotFoundError } from '../../utils/errors'
+import { redis } from '../../lib/redis'
+import { logger } from '../../config/logger'
 
-const CODE_TTL_MS = 10 * 60 * 1000
+const CODE_TTL_SECONDS = 10 * 60
 const CODE_LENGTH = 6
+const CODE_KEY_PREFIX = 'tg:notify-code:'
 
-// Code pool is separate from the room-link pool so a customer can't
-// accidentally bind a notification chat where they meant a room chat
-// (or vice versa). The webhook tries both pools on /link <code>.
-const pendingCodes = new Map<string, number>()    // code -> expiresAt
+// Like the room-link codes, lives in Redis so the bot can consume.
+// Kept in a SEPARATE key namespace so a code minted for one pool can't
+// be accidentally accepted by the other (room vs property-wide).
 
 function generateNumericCode(length: number): string {
   let code = ''
@@ -20,12 +22,6 @@ function generateNumericCode(length: number): string {
     }
   }
   return code
-}
-
-function purgeExpired(now: number): void {
-  for (const [code, exp] of pendingCodes) {
-    if (exp <= now) pendingCodes.delete(code)
-  }
 }
 
 export interface BankNotificationGroupDto {
@@ -42,32 +38,30 @@ export const bankNotificationGroupsService = {
    * our bot) within the TTL window to bind the chat as a property-wide
    * payment-notification source.
    */
-  mintCode(): { code: string; expiresAt: string; ttlSeconds: number } {
-    const now = Date.now()
-    purgeExpired(now)
-    let code = generateNumericCode(CODE_LENGTH)
-    while (pendingCodes.has(code)) code = generateNumericCode(CODE_LENGTH)
-    const expiresAt = now + CODE_TTL_MS
-    pendingCodes.set(code, expiresAt)
-    return {
-      code,
-      expiresAt: new Date(expiresAt).toISOString(),
-      ttlSeconds: Math.floor(CODE_TTL_MS / 1000),
+  async mintCode(): Promise<{ code: string; expiresAt: string; ttlSeconds: number }> {
+    const r = redis()
+    if (!r) {
+      logger.warn('REDIS_URL not set — Telegram notification-group codes cannot be consumed by the bot')
+      const code = generateNumericCode(CODE_LENGTH)
+      return {
+        code,
+        expiresAt: new Date(Date.now() + CODE_TTL_SECONDS * 1000).toISOString(),
+        ttlSeconds: CODE_TTL_SECONDS,
+      }
     }
-  },
 
-  /**
-   * Resolve a code received from Telegram. Returns true if the code
-   * was a valid (un-expired, un-consumed) notification-group code.
-   * Single-use: a successful resolution removes the code.
-   */
-  consumeCode(code: string): boolean {
-    const now = Date.now()
-    purgeExpired(now)
-    const exp = pendingCodes.get(code)
-    if (!exp) return false
-    pendingCodes.delete(code)
-    return true
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateNumericCode(CODE_LENGTH)
+      const ok = await r.set(`${CODE_KEY_PREFIX}${code}`, '1', 'EX', CODE_TTL_SECONDS, 'NX')
+      if (ok === 'OK') {
+        return {
+          code,
+          expiresAt: new Date(Date.now() + CODE_TTL_SECONDS * 1000).toISOString(),
+          ttlSeconds: CODE_TTL_SECONDS,
+        }
+      }
+    }
+    throw new Error('Failed to mint a unique notification-group code after 5 attempts')
   },
 
   async list(): Promise<BankNotificationGroupDto[]> {
@@ -83,10 +77,6 @@ export const bankNotificationGroupsService = {
   async isNotificationChat(chatId: string): Promise<boolean> {
     const row = await bankNotificationGroupsRepository.findByChatId(chatId)
     return !!row
-  },
-
-  async upsertGroup(chatId: string, chatTitle: string | null): Promise<void> {
-    await bankNotificationGroupsRepository.upsertByChatId(chatId, chatTitle)
   },
 
   async unlink(id: string): Promise<void> {

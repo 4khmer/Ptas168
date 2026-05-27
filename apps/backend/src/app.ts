@@ -22,7 +22,6 @@ import { settingsRouter } from './modules/settings/settings.routes'
 import { usersRouter } from './modules/users/users.routes'
 import { notificationsRouter } from './modules/notifications/notifications.routes'
 import { bankPaymentsRouter } from './modules/bankPayments/bankPayments.routes'
-import { telegramBotRouter } from './modules/telegramBot/telegramBot.routes'
 import { telegramLinksRouter } from './modules/telegramLinks/telegramLinks.routes'
 import { bankNotificationGroupsRouter } from './modules/bankNotificationGroups/bankNotificationGroups.routes'
 import { uploadsRouter, UPLOAD_DIR_RESOLVED } from './modules/uploads/uploads.routes'
@@ -81,9 +80,10 @@ export function buildApp(): Express {
   app.use(`${API_BASE}/users`, usersRouter)
   app.use(`${API_BASE}/notifications`, notificationsRouter)
 
-  // Bank payments + Telegram bot webhook
+  // Bank payments + Telegram bot infrastructure. The bot process itself
+  // lives in apps/telegram-bot — Telegram webhooks no longer terminate
+  // here; the backend only mints link codes for the Mini App.
   app.use(`${API_BASE}/bank-payments`, bankPaymentsRouter)
-  app.use(`${API_BASE}/telegram-bot`, telegramBotRouter)
   app.use(`${API_BASE}/telegram-links`, telegramLinksRouter)
   app.use(`${API_BASE}/bank-notification-groups`, bankNotificationGroupsRouter)
 

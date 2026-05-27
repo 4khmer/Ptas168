@@ -1,5 +1,5 @@
-import type { BankParser, ParsedBankPayment } from './types'
-import { parseAba } from './aba'
+import type { BankParser, ParsedBankPayment } from './types.js'
+import { parseAba } from './aba.js'
 
 // Order matters — first matching parser wins. Add new banks here.
 const PARSERS: BankParser[] = [
@@ -15,4 +15,5 @@ export function parseBankPayment(text: string): ParsedBankPayment | null {
   return null
 }
 
-export type { ParsedBankPayment } from './types'
+export type { ParsedBankPayment, BankParser } from './types.js'
+export { parseAba } from './aba.js'

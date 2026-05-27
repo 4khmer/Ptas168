@@ -1,7 +1,7 @@
-import type { ParsedBankPayment } from './types'
+import type { ParsedBankPayment } from './types.js'
 
 const AMOUNT_RE = String.raw`\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?`
-const CURRENCY_RE = String.raw`USD|KHR|US\$|\$|RIEL|\u17db`
+const CURRENCY_RE = String.raw`USD|KHR|US\$|\$|RIEL|៛`
 
 /**
  * ABA Bank payment-confirmation message parser.
@@ -76,7 +76,7 @@ function normalizeAmount(value: string): string {
 function normalizeCurrency(value: string): 'USD' | 'KHR' | null {
   const c = value.trim().toUpperCase()
   if (c === 'USD' || c === '$' || c === 'US$') return 'USD'
-  if (c === 'KHR' || c === 'RIEL' || c === '\u17db') return 'KHR'
+  if (c === 'KHR' || c === 'RIEL' || c === '៛') return 'KHR'
   return null
 }
 
