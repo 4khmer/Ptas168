@@ -3,7 +3,11 @@ import { useStore } from '../store'
 // Lightweight in-app translator. Consumers call `t = useT()` then `t('key')`.
 // Missing keys fall back to English, then the literal key — no crash.
 
-const DICT = {
+export type Language = 'en' | 'km'
+
+type Dictionary = Record<Language, Record<string, string>>
+
+const DICT: Dictionary = {
   en: {
     // ── Common ────────────────────────────────────────────────────────────────
     'common.loading':       'Loading…',
@@ -1255,26 +1259,30 @@ const DICT = {
   },
 }
 
-export const SUPPORTED_LANGS = ['en', 'km']
+export const SUPPORTED_LANGS = ['en', 'km'] as const satisfies readonly Language[]
 
-export function getStoredLanguage() {
+function isLanguage(v: unknown): v is Language {
+  return typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v)
+}
+
+export function getStoredLanguage(): Language {
   try {
     const v = localStorage.getItem('pbms_lang')
-    return SUPPORTED_LANGS.includes(v) ? v : 'en'
+    return isLanguage(v) ? v : 'en'
   } catch {
     return 'en'
   }
 }
 
-export function persistLanguage(lang) {
+export function persistLanguage(lang: string): void {
   try {
-    if (SUPPORTED_LANGS.includes(lang)) localStorage.setItem('pbms_lang', lang)
+    if (isLanguage(lang)) localStorage.setItem('pbms_lang', lang)
   } catch { /* noop */ }
   if (typeof document !== 'undefined') document.documentElement.lang = lang
 }
 
-export function translate(lang, key, vars) {
-  let s = DICT[lang]?.[key] ?? DICT.en[key] ?? key
+export function translate(lang: Language | string, key: string, vars?: Record<string, unknown>): string {
+  let s = (DICT as Record<string, Record<string, string>>)[lang]?.[key] ?? DICT.en[key] ?? key
   if (vars && typeof s === 'string') {
     for (const [k, v] of Object.entries(vars)) {
       s = s.replaceAll(`{${k}}`, String(v))
@@ -1283,14 +1291,16 @@ export function translate(lang, key, vars) {
   return s
 }
 
+export type TFunction = (key: string, vars?: Record<string, unknown>) => string
+
 // React hook — re-renders the consumer when language changes.
-export function useT() {
-  const lang = useStore(s => s.language)
+export function useT(): TFunction {
+  const lang = useStore((s: { language: string }) => s.language)
   return (key, vars) => translate(lang, key, vars)
 }
 
 // Map invoice status → translated label (delegates to dict so tabs/badges share)
-export function invoiceStatusLabelKey(status) {
+export function invoiceStatusLabelKey(status: string): string | null {
   switch (status) {
     case 'paid':      return 'status.paid'
     case 'progress':  return 'status.progress'

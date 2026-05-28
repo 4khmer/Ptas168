@@ -17,7 +17,7 @@ import type {
   CreateSubUserArgs, UpdateSubUserArgs,
 } from '@ptas/sdk'
 import { resolveInvoiceStatus } from '../lib/billing'
-import { getStoredLanguage, persistLanguage } from '../lib/i18n.js'
+import { getStoredLanguage, persistLanguage } from '../lib/i18n'
 import {
   getToken, setToken,
   authApi, buildingsApi, floorsApi, roomsApi, tenantsApi, contractsApi,

@@ -6,15 +6,35 @@
 // caller's surface — e.g. coming from Room Detail vs from the Billing menu.
 
 import { formatShortDate } from '../../lib/date'
+import type { TenantDto, RoomDto } from '@ptas/contracts'
+import type { InvoiceUiDto } from '@ptas/sdk'
+import type { PagedInvoicesState } from '../../store'
+
+export interface Breadcrumb {
+  label: string
+  to?: string
+}
+
+interface BreadcrumbStore {
+  tenants: TenantDto[]
+  rooms: RoomDto[]
+  invoices: InvoiceUiDto[]
+  pagedInvoices?: PagedInvoicesState | null
+}
 
 /** Build "Room 19 — 05 / 2026" — the same label mobile shows in PageHeader. */
-function invoiceTitle(inv, fallbackTitle) {
+function invoiceTitle(inv: InvoiceUiDto | undefined, fallbackTitle?: string): string {
   const room = inv?.roomSnapshot?.name
   if (room && inv?.periodStart) return `${room} — ${formatShortDate(inv.periodStart)}`
   return inv?.invoiceNumber || fallbackTitle || 'Invoice'
 }
 
-export function buildBreadcrumbs(pathname, store, fallbackTitle, search) {
+export function buildBreadcrumbs(
+  pathname: string,
+  store: BreadcrumbStore,
+  fallbackTitle?: string,
+  search?: URLSearchParams | null,
+): Breadcrumb[] {
   if (pathname === '/')         return [{ label: 'Rooms' }]
   if (pathname === '/tenants')  return [{ label: 'More', to: '/more' }, { label: 'Tenants' }]
   if (pathname === '/billing')  return [{ label: 'Billing' }]
@@ -104,6 +124,6 @@ export function buildBreadcrumbs(pathname, store, fallbackTitle, search) {
   return [{ label: fallbackTitle || '' }]
 }
 
-function safeDecode(s) {
+function safeDecode(s: string): string {
   try { return decodeURIComponent(s) } catch { return s }
 }

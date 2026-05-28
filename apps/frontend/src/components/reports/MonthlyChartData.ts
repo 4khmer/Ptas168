@@ -1,7 +1,31 @@
 import { useMemo } from 'react'
 import { useStore } from '../../store'
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+export interface MoneyMonthBucket {
+  label: string
+  expected: number
+  collected: number
+  outstanding: number
+  overdue: number
+}
+
+export interface UsageMonthBucket {
+  label: string
+  water: number
+  electricity: number
+}
+
+export interface ReportSeries {
+  year: number
+  months: MoneyMonthBucket[]
+}
+
+export interface UsageSeries {
+  year: number
+  months: UsageMonthBucket[]
+}
 
 /**
  * Aggregates the invoices store into monthly buckets for the Outstanding
@@ -16,11 +40,11 @@ const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
  *   overdue     — as-of end-of-month, sum(total) of progress invoices with
  *                 dueDate strictly before that point
  */
-export function useReportSeries(year = new Date().getFullYear()) {
+export function useReportSeries(year: number = new Date().getFullYear()): ReportSeries {
   const invoices = useStore(s => s.invoices)
 
   return useMemo(() => {
-    const months = MONTH_LABELS.map(label => ({
+    const months: MoneyMonthBucket[] = MONTH_LABELS.map(label => ({
       label,
       expected: 0,
       collected: 0,
@@ -64,7 +88,7 @@ export function useReportSeries(year = new Date().getFullYear()) {
   }, [invoices, year])
 }
 
-export function fmtAxisMoney(n) {
+export function fmtAxisMoney(n: number): string {
   if (n >= 1000) return `$${Math.round(n / 100) / 10}k`
   return `$${Math.round(n)}`
 }
@@ -79,11 +103,11 @@ export function fmtAxisMoney(n) {
  * used by the Outstanding Balance / Monthly Collections charts), so all
  * three charts read consistent x-axis values.
  */
-export function useUsageSeries(year = new Date().getFullYear()) {
+export function useUsageSeries(year: number = new Date().getFullYear()): UsageSeries {
   const invoices = useStore(s => s.invoices)
 
   return useMemo(() => {
-    const months = MONTH_LABELS.map(label => ({ label, water: 0, electricity: 0 }))
+    const months: UsageMonthBucket[] = MONTH_LABELS.map(label => ({ label, water: 0, electricity: 0 }))
 
     for (const inv of invoices) {
       const start = inv.periodStart ? new Date(inv.periodStart) : null
@@ -103,7 +127,7 @@ export function useUsageSeries(year = new Date().getFullYear()) {
   }, [invoices, year])
 }
 
-export function fmtAxisCount(n) {
+export function fmtAxisCount(n: number): string {
   if (n >= 1000) return `${Math.round(n / 100) / 10}k`
   return `${Math.round(n)}`
 }
