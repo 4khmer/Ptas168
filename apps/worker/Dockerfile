@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1.7
+# Multi-stage build for apps/worker (BullMQ overdue + invoice-paid jobs).
+# Build context = repo root. Build with:
+#   docker build -f apps/worker/Dockerfile -t ptas168-worker .
+
+ARG NODE_VERSION=22
+
+FROM node:${NODE_VERSION}-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && corepack enable \
+ && corepack prepare pnpm@11.3.0 --activate
+WORKDIR /repo
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY apps/backend/package.json       ./apps/backend/
+COPY apps/frontend/package.json      ./apps/frontend/
+COPY apps/worker/package.json        ./apps/worker/
+COPY apps/telegram-bot/package.json  ./apps/telegram-bot/
+COPY packages/bank-parsers/package.json ./packages/bank-parsers/
+COPY packages/contracts/package.json    ./packages/contracts/
+COPY packages/db/package.json           ./packages/db/
+COPY packages/sdk/package.json          ./packages/sdk/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+FROM deps AS build
+COPY packages ./packages
+COPY apps/worker ./apps/worker
+RUN pnpm --filter @ptas/db generate
+RUN pnpm turbo run build --filter=@ptas/worker...
+
+FROM base AS runtime
+ENV NODE_ENV=production
+COPY --from=build /repo /repo
+WORKDIR /repo/apps/worker
+CMD ["node", "dist/index.js"]

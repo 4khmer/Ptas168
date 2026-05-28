@@ -1,16 +1,28 @@
 # PTAS168 — local development infrastructure
 #
-# Brings up PostgreSQL (primary data store) and Redis (future BullMQ / cache).
+# Brings up the full stack: PostgreSQL + Redis (data plane) plus all four
+# Node apps (backend, worker, telegram-bot) and the static frontend.
 # Ports are bound to 127.0.0.1 so containers are not exposed on the LAN.
 # Volumes are named so data persists across `docker compose down` and is only
 # wiped by `docker compose down -v` (used by the `db:reset` script).
 #
 # Run from the monorepo root via:
-#   pnpm db:up    pnpm db:down    pnpm db:logs    pnpm db:reset
+#   pnpm compose:build         # build all images
+#   pnpm compose:up            # bring everything online (detached)
+#   pnpm compose:down          # stop everything (data preserved)
+#   pnpm compose:logs          # follow logs across all services
+#
+# Or for just the data plane (legacy):
+#   pnpm db:up                 # postgres + redis only
+#
+# `apps/*/Dockerfile` use the repo root as their build context, so the
+# compose file must be invoked with `-f infrastructure/docker/docker-compose.yml`
+# from the repo root (the `pnpm compose:*` scripts do this for you).
 
 name: ptas168
 
 services:
+  # ── data plane ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:16
     container_name: ptas168_postgres
@@ -63,6 +75,123 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ── apps ────────────────────────────────────────────────────────────────
+  # All four apps share the same DATABASE_URL / REDIS_URL pointing at the
+  # compose service names. Secrets default to dev values; override by
+  # exporting in your shell or via a top-level `.env` file Compose reads.
+
+  backend:
+    image: ptas168-backend:latest
+    container_name: ptas168_backend
+    restart: unless-stopped
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ptas168_dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me_minimum_32_characters_long}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      # Required by env schema even though only apps/telegram-bot actually
+      # uses it — a dummy value passes validation; override via shell env.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-unused_in_backend_set_in_telegram_bot}
+      TELEGRAM_BANK_BOT_TOKEN: ${TELEGRAM_BANK_BOT_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      API_BASE_PATH: ${API_BASE_PATH:-/api}
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: ptas168-worker:latest
+    container_name: ptas168_worker
+    restart: unless-stopped
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ptas168_dev
+      REDIS_URL: redis://redis:6379
+      OVERDUE_CRON: ${OVERDUE_CRON:-0 9 * * *}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  telegram-bot:
+    image: ptas168-telegram-bot:latest
+    container_name: ptas168_telegram_bot
+    restart: unless-stopped
+    build:
+      context: ../..
+      dockerfile: apps/telegram-bot/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ptas168_dev
+      REDIS_URL: redis://redis:6379
+      # Leave empty for stub mode (grammY polling disabled, queue consumer
+      # still runs and logs "would have sent").
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: ptas168-frontend:latest
+    container_name: ptas168_frontend
+    restart: unless-stopped
+    build:
+      context: ../..
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        # Same-origin /api — nginx inside this container forwards to backend.
+        VITE_API_URL: /api
+        VITE_FILE_URL: /files
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_started
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres_data:
     name: ptas168_postgres_data
@@ -70,5 +199,5 @@ volumes:
     name: ptas168_redis_data
 
 # Compose v2 creates a default bridge network named `ptas168_default`.
-# Future services (backend, worker, telegram-bot, ai-assistant) can join the
-# same project to reach `postgres` and `redis` by service name.
+# All services join it automatically and can reach each other by service
+# name (e.g. `postgres`, `redis`, `backend`).

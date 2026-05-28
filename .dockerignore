@@ -1,0 +1,43 @@
+# Keep build contexts small — exclude everything that isn't source.
+
+# Dependencies + build artifacts (each Dockerfile reinstalls + rebuilds).
+**/node_modules
+**/dist
+**/.turbo
+**/.vite
+
+# Local-only env files; production images expect runtime env vars instead.
+**/.env
+**/.env.local
+**/.env.development
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+# .env.production is fine — caller can opt to bake it in if they want.
+
+# Git + editor + OS metadata.
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+
+# Test + coverage outputs.
+**/coverage
+**/playwright-report
+**/test-results
+
+# Docs not needed inside the image.
+**/*.md
+!apps/*/README.md
+!packages/*/README.md
+!README.md
+
+# Local infrastructure data.
+infrastructure/docker/postgres/initdb.d/*
+
+# Logs.
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
