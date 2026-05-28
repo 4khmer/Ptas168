@@ -101,6 +101,23 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       API_BASE_PATH: ${API_BASE_PATH:-/api}
+      # Disk-storage paths inside the container. Override the bundled
+      # .env.production values (which point at host-specific Tomcat paths
+      # that don't exist inside the image). When R2 is configured below,
+      # these are ignored.
+      UPLOAD_DIR: ${UPLOAD_DIR:-/repo/apps/backend/uploads}
+      FILE_URL_BASE: ${FILE_URL_BASE:-}
+      # Cloudflare R2 (optional). When R2_BUCKET + R2_PUBLIC_URL are set,
+      # uploads go to R2 and the backend skips its disk-static mount. Leave
+      # blank to keep using local disk. Note: disk uploads aren't persisted
+      # across container restarts since no volume is mounted at /repo/apps/
+      # backend/uploads — use R2 (or add a bind mount) for production-style
+      # persistence. See apps/backend/.env.example for credential setup.
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
     ports:
       - "127.0.0.1:3001:3001"
     depends_on:

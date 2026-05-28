@@ -1,37 +1,20 @@
 import { Router, type RequestHandler } from 'express'
 import multer from 'multer'
-import path from 'node:path'
-import fs from 'node:fs'
-import crypto from 'node:crypto'
 import { authMiddleware } from '../../middleware/auth.middleware.js'
 import { asyncHandler } from '../../middleware/async-handler.js'
 import { uploadsController } from './uploads.controller.js'
 import { ValidationError } from '../../utils/errors.js'
-import { env } from '../../config/env.js'
+import { DISK_UPLOAD_DIR, isR2Configured } from '../../lib/storage.js'
+import { logger } from '../../config/logger.js'
 
-const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
 
-// Resolve the upload dir at module load — fall back to ./uploads relative
-// to the backend cwd so dev works without any env wiring.
-const uploadDir = env.UPLOAD_DIR
-  ? path.resolve(env.UPLOAD_DIR)
-  : path.resolve(process.cwd(), 'uploads')
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true })
-}
-
+// In-memory storage — the controller hands the buffer to storage.putUpload
+// which then routes to R2 or disk. For 10MB max images this is fine; switch
+// to disk-buffered multer if file sizes grow.
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadDir),
-    filename: (_req, file, cb) => {
-      const rawExt = path.extname(file.originalname).toLowerCase()
-      const ext = ALLOWED_EXT.has(rawExt) ? rawExt : '.jpg'
-      cb(null, `${Date.now()}-${crypto.randomUUID()}${ext}`)
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_BYTES },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_MIME.has(file.mimetype)) {
@@ -57,10 +40,15 @@ const handleUpload: RequestHandler = (req, res, next) => {
   })
 }
 
+logger.info(
+  { backend: isR2Configured ? 'R2' : 'disk', diskDir: isR2Configured ? undefined : DISK_UPLOAD_DIR },
+  'Upload storage backend',
+)
+
 export const uploadsRouter = Router()
 uploadsRouter.use(authMiddleware)
 uploadsRouter.post('/', handleUpload, asyncHandler(uploadsController.create))
 
-// Exposed so app.ts can mount express.static against the same path in dev
-// (production serves these files via Tomcat, not Express).
-export const UPLOAD_DIR_RESOLVED = uploadDir
+// Re-exported so app.ts can mount express.static against the same path when
+// disk is the active backend (production-on-R2 skips this mount).
+export { DISK_UPLOAD_DIR as UPLOAD_DIR_RESOLVED, isR2Configured }

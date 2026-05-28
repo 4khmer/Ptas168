@@ -5,6 +5,11 @@ dist/
 build/
 coverage/
 
+# Backend disk-mode upload dir (R2 in prod). Keep the directory in-repo via
+# tracking nothing inside it — gitignore everything except a sentinel file
+# if you ever want one.
+apps/backend/uploads/
+
 # env files (keep .env.example tracked inside each app)
 .env
 .env.*.local

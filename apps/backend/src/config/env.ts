@@ -25,7 +25,25 @@ const envSchema = z.object({
   API_BASE_PATH: z.string().regex(/^\/[^?#]*$/, 'API_BASE_PATH must start with /').default('/api'),
   TELEGRAM_BANK_BOT_TOKEN: z.string().optional(),
   TELEGRAM_BANK_WEBHOOK_SECRET: z.string().optional(),
+  // ── Cloudflare R2 (optional). If R2_BUCKET is set, uploads go to R2;
+  // otherwise the backend falls back to disk storage under UPLOAD_DIR.
+  // R2_PUBLIC_URL is the base URL the browser hits (custom domain, or
+  // the auto-generated `https://pub-<hash>.r2.dev` from R2's public-bucket
+  // toggle). Trailing slash optional.
+  //
+  // Empty strings are normalized to undefined so docker compose's
+  // `${R2_FOO:-}` default doesn't trip `.url()` validation when the
+  // user hasn't wired R2 yet.
+  R2_ACCOUNT_ID:        z.preprocess(emptyToUndefined, z.string().optional()),
+  R2_ACCESS_KEY_ID:     z.preprocess(emptyToUndefined, z.string().optional()),
+  R2_SECRET_ACCESS_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+  R2_BUCKET:            z.preprocess(emptyToUndefined, z.string().optional()),
+  R2_PUBLIC_URL:        z.preprocess(emptyToUndefined, z.string().url().optional()),
 })
+
+function emptyToUndefined(v: unknown): unknown {
+  return v === '' ? undefined : v
+}
 
 const parsed = envSchema.safeParse(process.env)
 

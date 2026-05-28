@@ -24,7 +24,7 @@ import { notificationsRouter } from './modules/notifications/notifications.route
 import { bankPaymentsRouter } from './modules/bankPayments/bankPayments.routes.js'
 import { telegramLinksRouter } from './modules/telegramLinks/telegramLinks.routes.js'
 import { bankNotificationGroupsRouter } from './modules/bankNotificationGroups/bankNotificationGroups.routes.js'
-import { uploadsRouter, UPLOAD_DIR_RESOLVED } from './modules/uploads/uploads.routes.js'
+import { uploadsRouter, UPLOAD_DIR_RESOLVED, isR2Configured } from './modules/uploads/uploads.routes.js'
 
 // Mount path for every router. Override via API_BASE_PATH when the
 // backend is fronted by a reverse proxy that forwards a sub-path
@@ -87,11 +87,14 @@ export function buildApp(): Express {
   app.use(`${API_BASE}/telegram-links`, telegramLinksRouter)
   app.use(`${API_BASE}/bank-notification-groups`, bankNotificationGroupsRouter)
 
-  // File uploads — POST /api/uploads writes to disk and returns a URL.
-  // In production Tomcat serves the files at FILE_URL_BASE; in dev we serve
-  // them ourselves so the same URL works without a separate file server.
+  // File uploads — POST /api/uploads. Storage backend is decided at module
+  // load: R2 if R2_BUCKET + R2_PUBLIC_URL are set, else local disk. When
+  // disk is active, mount express.static at /uploads so the returned URL
+  // resolves on the same host (no need for a separate file server in dev).
+  // When R2 is active, the returned URL points at the R2 public domain
+  // directly, so this mount is skipped.
   app.use(`${API_BASE}/uploads`, uploadsRouter)
-  if (env.NODE_ENV !== 'production') {
+  if (!isR2Configured) {
     app.use('/uploads', express.static(UPLOAD_DIR_RESOLVED))
   }
 
