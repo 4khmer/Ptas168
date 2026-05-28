@@ -45,9 +45,7 @@ RUN pnpm turbo run build --filter=pbms-app...
 
 # ── runtime ───────────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine AS runtime
-# Serve under the same base path the Vite config bakes into asset URLs
-# (`base: '/Ptas168_Frontend/'`). Nginx config also proxies /api → backend.
 COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /repo/apps/frontend/dist /usr/share/nginx/html/Ptas168_Frontend
+COPY --from=build /repo/apps/frontend/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

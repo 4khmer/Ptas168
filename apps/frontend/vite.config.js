@@ -19,6 +19,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    base: '/Ptas168_Frontend/',
+    base: '/',
   }
 })
