@@ -6,11 +6,9 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
 
-    // Mixed JS + TS during migration. Existing .js files keep working;
-    // new .ts/.tsx files get full type-checking. Flip checkJs to true
-    // (or remove allowJs entirely) once the migration is complete.
-    "allowJs": true,
-    "checkJs": false,
+    // Migration is complete — apps/frontend/src is 100% TypeScript.
+    // allowJs / checkJs removed so any stray .js or .jsx slipping back
+    // into src/ becomes a hard error instead of silently bypassing tsc.
 
     "strict": true,
     "noUnusedLocals": true,
@@ -31,6 +29,6 @@
     // Lets us import .json (e.g. translation files in lib/i18n) by Vite's loader.
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src", "vite.config.js", "vite.config.ts"],
+  "include": ["src", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
