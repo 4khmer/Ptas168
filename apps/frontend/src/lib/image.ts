@@ -3,16 +3,22 @@
 // regardless of whether the backend stores it as base64 or as a file
 // served from disk.
 
-const DEFAULTS = { maxDimension: 1024, quality: 0.85, mime: 'image/jpeg' }
+export interface ResizeOptions {
+  maxDimension?: number
+  quality?: number
+  mime?: string
+}
 
-async function loadImage(file) {
-  const dataUrl = await new Promise((resolve, reject) => {
+const DEFAULTS: Required<ResizeOptions> = { maxDimension: 1024, quality: 0.85, mime: 'image/jpeg' }
+
+async function loadImage(file: File | Blob): Promise<{ img: HTMLImageElement; dataUrl: string }> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
+    reader.onload = () => resolve(reader.result as string)
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
-  const img = await new Promise((resolve, reject) => {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image()
     i.onload = () => resolve(i)
     i.onerror = reject
@@ -21,20 +27,20 @@ async function loadImage(file) {
   return { img, dataUrl }
 }
 
-function drawScaled(img, maxDimension) {
+function drawScaled(img: HTMLImageElement, maxDimension: number): HTMLCanvasElement {
   const scale = Math.min(1, maxDimension / Math.max(img.width, img.height))
   const w = Math.round(img.width * scale)
   const h = Math.round(img.height * scale)
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
-  canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+  canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
   return canvas
 }
 
 // Returns a JPEG data URL (legacy code path — used where the backend
 // still expects an inline string).
-export async function resizeImageToDataURL(file, opts = {}) {
+export async function resizeImageToDataURL(file: File | null | undefined, opts: ResizeOptions = {}): Promise<string | null> {
   if (!file) return null
   const { maxDimension, quality, mime } = { ...DEFAULTS, ...opts }
   const { img, dataUrl } = await loadImage(file)
@@ -44,13 +50,13 @@ export async function resizeImageToDataURL(file, opts = {}) {
 
 // Returns a Blob — preferred for the new /api/uploads multipart endpoint
 // since it avoids a base64 round-trip on the wire.
-export async function resizeImageToBlob(file, opts = {}) {
+export async function resizeImageToBlob(file: File | Blob | null | undefined, opts: ResizeOptions = {}): Promise<Blob | null> {
   if (!file) return null
   const { maxDimension, quality, mime } = { ...DEFAULTS, ...opts }
   const { img } = await loadImage(file)
   // Even small originals get re-encoded to JPEG so the server gets a
   // single canonical file format.
-  return new Promise((resolve, reject) => {
+  return new Promise<Blob>((resolve, reject) => {
     drawScaled(img, maxDimension).toBlob(
       blob => (blob ? resolve(blob) : reject(new Error('Image encoding failed'))),
       mime,

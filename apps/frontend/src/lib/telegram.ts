@@ -1,14 +1,45 @@
 /**
- * Telegram Mini App helpers
+ * Telegram Mini App helpers.
  */
 
-export const tg = window.Telegram?.WebApp || null
+type HapticStyle = 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'
 
-export function isTelegramWebApp() {
-  return !!(window.Telegram?.WebApp?.initData)
+interface SafeAreaInset { top?: number; bottom?: number; left?: number; right?: number }
+
+interface TelegramWebApp {
+  initData?: string
+  initDataUnsafe?: { user?: { first_name: string; last_name?: string } }
+  ready: () => void
+  expand: () => void
+  setHeaderColor?: (color: string) => void
+  disableVerticalSwipes?: () => void
+  enableClosingConfirmation?: () => void
+  onEvent?: (event: string, handler: () => void) => void
+  safeAreaInset?: SafeAreaInset
+  contentSafeAreaInset?: SafeAreaInset
+  HapticFeedback?: { impactOccurred: (style: HapticStyle) => void }
+  BackButton?: {
+    show: () => void
+    hide: () => void
+    onClick: (handler: () => void) => void
+    offClick: (handler: () => void) => void
+  }
 }
 
-export function initTelegram() {
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: TelegramWebApp }
+  }
+}
+
+export const tg: TelegramWebApp | null =
+  typeof window !== 'undefined' ? (window.Telegram?.WebApp ?? null) : null
+
+export function isTelegramWebApp(): boolean {
+  return !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData)
+}
+
+export function initTelegram(): void {
   if (!tg) return
   tg.ready()
   tg.expand()
@@ -34,17 +65,17 @@ export function initTelegram() {
   }
 }
 
-function applyTelegramInsets() {
+function applyTelegramInsets(): void {
   if (!tg || typeof document === 'undefined') return
   // contentSafeAreaInset wraps the area where Telegram WON'T draw chrome
   // over the WebApp; safeAreaInset is the system inset (status bar, notch).
   // We want max of both so we never overlap either.
   const sys = tg.safeAreaInset || {}
   const ctx = tg.contentSafeAreaInset || {}
-  const top    = Math.max(sys.top || 0,    ctx.top || 0)
+  const top    = Math.max(sys.top    || 0, ctx.top    || 0)
   const bottom = Math.max(sys.bottom || 0, ctx.bottom || 0)
-  const left   = Math.max(sys.left || 0,   ctx.left || 0)
-  const right  = Math.max(sys.right || 0,  ctx.right || 0)
+  const left   = Math.max(sys.left   || 0, ctx.left   || 0)
+  const right  = Math.max(sys.right  || 0, ctx.right  || 0)
   const root = document.documentElement.style
   root.setProperty('--tg-safe-top',    `${top}px`)
   root.setProperty('--tg-safe-bottom', `${bottom}px`)
@@ -54,10 +85,9 @@ function applyTelegramInsets() {
 
 /**
  * Trigger native haptic feedback (vibration) inside Telegram.
- * `style` is one of 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'.
  * No-op outside the Telegram WebApp.
  */
-export function hapticImpact(style = 'light') {
+export function hapticImpact(style: HapticStyle = 'light'): void {
   try { tg?.HapticFeedback?.impactOccurred(style) } catch { /* noop */ }
 }
 
@@ -67,7 +97,7 @@ export function hapticImpact(style = 'light') {
  * haptic impact before running. Returns a cleanup function that removes
  * the handler and hides the button — call from a useEffect cleanup.
  */
-export function showBackButton(handler) {
+export function showBackButton(handler: () => void): () => void {
   if (!tg?.BackButton) return () => {}
   const wrapped = () => {
     hapticImpact('light')
@@ -76,12 +106,12 @@ export function showBackButton(handler) {
   tg.BackButton.onClick(wrapped)
   tg.BackButton.show()
   return () => {
-    tg.BackButton.offClick(wrapped)
-    tg.BackButton.hide()
+    tg.BackButton?.offClick(wrapped)
+    tg.BackButton?.hide()
   }
 }
 
-export function hideBackButton() {
+export function hideBackButton(): void {
   if (!tg?.BackButton) return
   tg.BackButton.hide()
 }

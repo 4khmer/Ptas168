@@ -16,7 +16,7 @@ import type {
   RoomServiceInput,
   CreateSubUserArgs, UpdateSubUserArgs,
 } from '@ptas/sdk'
-import { resolveInvoiceStatus } from '../lib/billing.js'
+import { resolveInvoiceStatus } from '../lib/billing'
 import { getStoredLanguage, persistLanguage } from '../lib/i18n.js'
 import {
   getToken, setToken,

@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, type ComponentType, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Building2, Settings, FileText, Languages, Users, LogOut, ChevronRight,
   ScrollText, UserCircle, Check, MessageSquare, Banknote,
+  type LucideProps,
 } from 'lucide-react'
 import { useStore } from '../store'
 import { useT } from '../lib/i18n'
@@ -12,11 +13,23 @@ const LANGUAGES = [
   { code: 'km', label: 'Khmer',   native: 'ភាសាខ្មែរ' },
 ]
 
-const ROLE_KEY = {
+const ROLE_KEY: Record<string, string> = {
   owner: 'more.role.owner',
   manager: 'more.role.manager',
   staff: 'more.role.staff',
   viewer: 'more.role.viewer',
+}
+
+interface MenuRowProps {
+  icon: ComponentType<LucideProps>
+  label: ReactNode
+  sub?: ReactNode
+  right?: ReactNode
+  onClick?: () => void
+  // The callsites still pass iconBg / iconColor — accepted but ignored
+  // (see comment below). Kept on the type so TS doesn't fail.
+  iconBg?: string
+  iconColor?: string
 }
 
 // Uniform menu row — every icon tile uses the same neutral chrome
@@ -24,7 +37,7 @@ const ROLE_KEY = {
 // for labels, not for colour. Per-row colour overrides are intentionally
 // no-ops; the iconBg / iconColor props are kept on the signature so the
 // callsites don't need to change, but the values are ignored.
-function MenuRow({ icon: Icon, label, sub, right, onClick }) {
+function MenuRow({ icon: Icon, label, sub, right, onClick }: MenuRowProps) {
   return (
     <button
       onClick={onClick}
@@ -44,7 +57,7 @@ function MenuRow({ icon: Icon, label, sub, right, onClick }) {
   )
 }
 
-function SectionHeader({ children }) {
+function SectionHeader({ children }: { children: ReactNode }) {
   return (
     <div className="px-4 pt-4 pb-1.5">
       <span className="text-[11px] font-bold text-[#454745] uppercase tracking-wide">{children}</span>
@@ -52,7 +65,7 @@ function SectionHeader({ children }) {
   )
 }
 
-function SectionCard({ children }) {
+function SectionCard({ children }: { children: ReactNode }) {
   return (
     <div className="mx-4 bg-white rounded-xl border border-[#d1d3cf] overflow-hidden divide-y divide-[#dde0db]">
       {children}

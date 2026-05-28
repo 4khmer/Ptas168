@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useStore } from '../store'
 import { useT } from '../lib/i18n'
 import { Eye, EyeOff, Building2 } from 'lucide-react'
@@ -13,7 +13,7 @@ export default function Login() {
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
 
-  async function handleCredentials(e) {
+  async function handleCredentials(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     if (!phone.trim())    { setError(t('login.errEnterPhone')); return }

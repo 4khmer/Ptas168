@@ -7,8 +7,15 @@ import { buildBreadcrumbs } from './breadcrumbs'
  * Page header
  * Mobile (<768px): circular back button + title + subtitle + rightSlot
  * Web (≥768px): breadcrumbs (auto-derived) + rightSlot
+ *
+ * @param {object} [props]
+ * @param {any} [props.title]
+ * @param {any} [props.subtitle]
+ * @param {() => void} [props.onBack]
+ * @param {any} [props.rightSlot]
+ * @param {string} [props.backTo]
  */
-export default function PageHeader({ title, subtitle, onBack, rightSlot, backTo }) {
+export default function PageHeader({ title, subtitle, onBack, rightSlot, backTo } = {}) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()

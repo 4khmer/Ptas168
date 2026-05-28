@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, type ChangeEvent, type ReactNode } from 'react'
 import { useStore } from '../store'
 import PageHeader from '../components/layout/PageHeader'
 import { useT } from '../lib/i18n'
@@ -6,15 +6,24 @@ import { resizeImageToBlob } from '../lib/image'
 import { uploadsApi } from '../sdk'
 import { Camera, Eye, EyeOff, Check } from 'lucide-react'
 
-const ROLE_KEY = { owner: 'more.role.owner', manager: 'more.role.manager', staff: 'more.role.staff', viewer: 'more.role.viewer' }
-const ROLE_COLOR = {
+const ROLE_KEY: Record<string, string> = { owner: 'more.role.owner', manager: 'more.role.manager', staff: 'more.role.staff', viewer: 'more.role.viewer' }
+const ROLE_COLOR: Record<string, string> = {
   owner:   'bg-[#e8ebe6] text-[#0e0f0c]',
   manager: 'bg-[#e8ebe6] text-[#0e0f0c]',
   staff:   'bg-[#E8F6EF] text-[#1F6F4E]',
   viewer:  'bg-[#e8ebe6] text-[#454745]',
 }
 
-function Field({ label, value, onChange, placeholder, type = 'text', readOnly = false }) {
+interface FieldProps {
+  label: string
+  value: string
+  onChange?: (v: string) => void
+  placeholder?: string
+  type?: string
+  readOnly?: boolean
+}
+
+function Field({ label, value, onChange, placeholder, type = 'text', readOnly = false }: FieldProps) {
   return (
     <div>
       <label className="text-[11px] font-semibold text-[#454745] uppercase tracking-[0.4px] mb-1.5 block">{label}</label>
@@ -34,7 +43,15 @@ function Field({ label, value, onChange, placeholder, type = 'text', readOnly = 
   )
 }
 
-function PasswordField({ label, value, onChange, placeholder, error }) {
+interface PasswordFieldProps {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  error?: string
+}
+
+function PasswordField({ label, value, onChange, placeholder, error }: PasswordFieldProps) {
   const [show, setShow] = useState(false)
   return (
     <div>
@@ -56,11 +73,11 @@ function PasswordField({ label, value, onChange, placeholder, error }) {
   )
 }
 
-function SectionLabel({ children }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return <div className="text-[11px] font-bold text-[#454745] uppercase tracking-wider pt-2 pb-1">{children}</div>
 }
 
-function SaveBanner({ show, label }) {
+function SaveBanner({ show, label }: { show: boolean; label: string }) {
   if (!show) return null
   return (
     <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#1F6F4E] text-white text-[13px] font-semibold px-4 py-2.5 rounded-full shadow-lg">
@@ -68,6 +85,8 @@ function SaveBanner({ show, label }) {
     </div>
   )
 }
+
+interface PwdErrors { current?: string; new?: string; confirm?: string }
 
 export default function Profile() {
   const t = useT()
@@ -77,42 +96,44 @@ export default function Profile() {
   const [name,     setName]     = useState(authUser?.name     || '')
   const [username, setUsername] = useState(authUser?.username || '')
   const [phone,    setPhone]    = useState(authUser?.phone    || '')
-  const [avatar,   setAvatar]   = useState(authUser?.profileImage || null)
+  const [avatar,   setAvatar]   = useState<string | null>(authUser?.profileImage || null)
 
   // ── Password form state ──
   const [currentPwd,  setCurrentPwd]  = useState('')
   const [newPwd,      setNewPwd]      = useState('')
   const [confirmPwd,  setConfirmPwd]  = useState('')
-  const [pwdErrors,   setPwdErrors]   = useState({})
+  const [pwdErrors,   setPwdErrors]   = useState<PwdErrors>({})
 
   const [profileSaved, setProfileSaved] = useState(false)
   const [pwdSaved,     setPwdSaved]     = useState(false)
-  const [pwdError,     setPwdError]     = useState('')
+  const [, setPwdError] = useState('')
   const [profileError, setProfileError] = useState('')
 
-  const fileRef = useRef(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   if (!authUser) return null
 
   // ── Avatar upload ──
   // Resize → POST /api/uploads → store the returned URL. The DB only
   // sees a short URL string, not the binary content.
-  async function handleAvatarFile(e) {
+  async function handleAvatarFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
     setProfileError('')
     try {
       const blob = await resizeImageToBlob(file, { maxDimension: 512 })
+      if (!blob) throw new Error('Image encoding failed')
       const { url } = await uploadsApi.upload(new File([blob], 'avatar.jpg', { type: blob.type }))
       setAvatar(url)
     } catch (err) {
-      setProfileError(err?.message || 'Upload failed')
+      setProfileError((err as Error)?.message || 'Upload failed')
     }
   }
 
   // ── Save profile ──
   async function handleSaveProfile() {
+    if (!authUser) return
     if (!name.trim()) return
     setProfileError('')
     const trimmedUsername = username.trim()
@@ -127,14 +148,14 @@ export default function Profile() {
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 2000)
     } catch (e) {
-      setProfileError(e.message || 'Save failed')
+      setProfileError((e as Error).message || 'Save failed')
       setUsername(authUser.username || '')   // revert local input on conflict
     }
   }
 
   // ── Change password ──
   async function handleChangePassword() {
-    const errs = {}
+    const errs: PwdErrors = {}
     if (!currentPwd)                   errs.current = t('profile.errCurPwd')
     if (!newPwd || newPwd.length < 6)  errs.new     = t('profile.errNewPwd')
     if (newPwd !== confirmPwd)         errs.confirm  = t('profile.errMatch')
