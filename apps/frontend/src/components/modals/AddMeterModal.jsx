@@ -5,7 +5,7 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { Droplets, Zap } from 'lucide-react'
 import { useT } from '../../lib/i18n'
-import { validate } from '../../lib/validate.js'
+import { validate } from '../../lib/validate'
 
 /**
  * Add a meter reading. Shows Water / Electricity rows based on which services

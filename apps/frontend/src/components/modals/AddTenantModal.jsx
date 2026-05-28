@@ -6,7 +6,7 @@ import Input from '../ui/Input'
 import { useStore } from '../../store'
 import { useT } from '../../lib/i18n'
 import { formatPhone } from '../../lib/phone'
-import { validate } from '../../lib/validate.js'
+import { validate } from '../../lib/validate'
 import { Search, CheckCircle, UserPlus } from 'lucide-react'
 
 export default function AddTenantModal({ open, onClose, roomId, roomName, roomPrice = 0 }) {

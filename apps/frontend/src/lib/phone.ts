@@ -9,7 +9,7 @@
  * the original value when there are fewer than 4 digits — nothing to
  * group meaningfully.
  */
-export function formatPhone(value) {
+export function formatPhone(value: unknown): string {
   if (value == null) return ''
   const s = String(value).trim()
   if (!s) return ''
@@ -30,8 +30,8 @@ export function formatPhone(value) {
 // Group digits into 3s from the right, so "12345678" → "12 345 678"
 // and "123456789" → "123 456 789". This matches the "### ### ###"
 // shape requested while degrading gracefully for shorter/longer numbers.
-function groupFromRight(digits) {
-  const parts = []
+function groupFromRight(digits: string): string {
+  const parts: string[] = []
   let i = digits.length
   while (i > 0) {
     const start = Math.max(0, i - 3)

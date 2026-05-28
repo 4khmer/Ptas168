@@ -6,7 +6,7 @@ import Input from '../ui/Input'
 import { useStore } from '../../store'
 import { useT } from '../../lib/i18n'
 import { createBuildingSchema, createFloorSchema } from '@ptas/contracts'
-import { validate } from '../../lib/validate.js'
+import { validate } from '../../lib/validate'
 
 // ── New/Edit Building ──────────────────────────────────────────────────────
 

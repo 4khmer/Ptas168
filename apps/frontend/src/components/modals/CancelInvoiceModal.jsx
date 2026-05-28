@@ -4,7 +4,7 @@ import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Textarea } from '../ui/Input'
 import { useT } from '../../lib/i18n'
-import { validate } from '../../lib/validate.js'
+import { validate } from '../../lib/validate'
 
 export default function CancelInvoiceModal({ open, onClose, onConfirm }) {
   const t = useT()

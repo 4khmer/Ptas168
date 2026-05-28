@@ -4,7 +4,7 @@ import Button from '../ui/Button'
 import { useT } from '../../lib/i18n'
 import { Banknote, QrCode } from 'lucide-react'
 import { payInvoiceSchema } from '@ptas/contracts'
-import { validate } from '../../lib/validate.js'
+import { validate } from '../../lib/validate'
 
 export default function MarkPaidModal({ open, onClose, onConfirm }) {
   const t = useT()
