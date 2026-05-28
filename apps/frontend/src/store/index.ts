@@ -1,4 +1,21 @@
 import { create } from 'zustand'
+import type {
+  BuildingDto, FloorDto, RoomDto, ContractDto, TenantDto,
+  ServiceFeeDto, RoomServiceDto, UserDto, BankPaymentDto,
+  TelegramLinkDto, BankNotificationGroupDto,
+  InvoiceStatusResponse, InvoicePaymentMethodWire,
+  MintCodeResponse, AuthResponse,
+} from '@ptas/contracts'
+import type {
+  InvoiceUiDto, InvoiceSettings, GroupedMeterReading,
+  MeterReadingLatest,
+  CreateTenantArgs, UpdateTenantArgs, UpdateProfileArgs,
+  AddTenantToRoomArgs, UpdateContractArgs,
+  BuildingInput, FloorInput, UpdateRoomArgs,
+  CreateServiceFeeArgs, UpdateServiceFeeArgs,
+  RoomServiceInput,
+  CreateSubUserArgs, UpdateSubUserArgs,
+} from '@ptas/sdk'
 import { resolveInvoiceStatus } from '../lib/billing.js'
 import { getStoredLanguage, persistLanguage } from '../lib/i18n.js'
 import {
@@ -7,16 +24,243 @@ import {
   roomServicesApi, meterReadingsApi, invoicesApi, serviceFeesApi,
   settingsApi, usersApi, bankPaymentsApi, telegramLinksApi, bankNotificationGroupsApi,
   groupMeterReadings, adaptInvoice, parseInvoiceSettings,
-} from '../sdk.js'
+} from '../sdk'
 
-const DEFAULT_INVOICE_SETTINGS = {
+// ── Local types ────────────────────────────────────────────────────────────
+
+/** What the store keeps about the logged-in user. UserDto with role lowercased. */
+export interface AuthUser {
+  id: string
+  name: string
+  username: string
+  phone: string
+  profileImage: string | null
+  role: string
+  via: string
+}
+
+/** UI shape returned by getRoomServices selector — adds derived display fields. */
+export interface RoomServiceUi {
+  id: string
+  roomId: string
+  serviceId: string
+  enabled: boolean
+  priceOverride: number | null
+  name: string
+  icon: string
+  type: 'fixed' | 'utility'
+  serviceType: string
+  unitLabel: string
+  effectiveRate: number
+  defaultRate: number
+}
+
+export interface PagedInvoicesState {
+  items: InvoiceUiDto[]
+  total: number
+  page: number
+  hasMore: boolean
+  byStatus: { all: number; progress: number; paid: number; overdue: number; cancelled: number }
+  lastQueryKey: string
+  loading: boolean
+}
+
+export interface OwnerProfile {
+  name: string
+  phone: string
+  profileImage: string | null
+}
+
+/** Result type from the room → status join used by Rooms list + Room Detail. */
+export interface RoomWithStatus {
+  room: RoomDto
+  contract: ContractDto | null
+  tenant: { id?: string; name?: string; phone?: string } | null
+  floor: FloorDto | undefined
+  building: BuildingDto | undefined
+  occupied: boolean
+}
+
+export interface AddMeterReadingInput {
+  date: string
+  waterPrev?: number | null
+  waterCurrent?: number | null
+  elecPrev?: number | null
+  elecCurrent?: number | null
+}
+
+export interface CreateInvoiceFormInput {
+  roomId: string
+  billPeriodStart?: string
+  billPeriodEnd?: string
+  periodStart?: string
+  periodEnd?: string
+  dueDateOffsetDays?: number
+  dueOption?: number
+  waterPrev?: number | null
+  waterCurrent?: number | null
+  elecPrev?: number | null
+  elecCurrent?: number | null
+}
+
+const DEFAULT_INVOICE_SETTINGS: InvoiceSettings = {
   header: { enabled: true, profileImage: null, bizName: '', tinNo: '', address: '', bizPhone: '' },
   body:   { enabled: true, invoiceNoDigits: 6 },
   footer: { enabled: true, note: '' },
   qr:     { enabled: false, qrString: '' },
 }
 
-export const useStore = create((set, get) => ({
+// ── Store interface ────────────────────────────────────────────────────────
+
+interface StoreState {
+  // ── Auth state ──
+  token: string | null
+  isLoggedIn: boolean
+  authUser: AuthUser | null
+
+  // ── Entity caches ──
+  buildings: BuildingDto[]
+  floors: FloorDto[]
+  rooms: RoomDto[]
+  contracts: ContractDto[]
+  tenants: TenantDto[]
+  masterServices: ServiceFeeDto[]
+  roomServices: RoomServiceDto[]
+  meterReadings: GroupedMeterReading[]
+  latestMeterReadings: Record<string, MeterReadingLatest[]>
+  invoices: InvoiceUiDto[]
+  pagedInvoices: PagedInvoicesState
+
+  exchangeRate: number
+  language: string
+
+  // ── Loading + error ──
+  loading: Record<string, boolean>
+  error: string | null
+
+  subUsers: UserDto[]
+  bankPayments: BankPaymentDto[]
+  telegramLinks: TelegramLinkDto[]
+  bankNotificationGroups: BankNotificationGroupDto[]
+  ownerProfile: OwnerProfile
+  invoiceSettings: InvoiceSettings
+
+  // ── Internal helpers ──
+  _setLoading: (key: string, val: boolean) => void
+  _onAuthFailure: (err: unknown) => void
+
+  // ── Selectors ──
+  getActiveContract: (roomId: string) => ContractDto | null
+  getRoomWithStatus: (roomId: string) => RoomWithStatus | null
+  getAllRoomsWithStatus: () => Array<RoomWithStatus | null>
+  resolveInvoice: (inv: InvoiceUiDto) => InvoiceUiDto
+  getInvoicesByRoom: (roomId: string) => InvoiceUiDto[]
+  getAllInvoices: () => InvoiceUiDto[]
+  getInvoiceById: (id: string) => InvoiceUiDto | null
+  getRoomServices: (roomId: string) => RoomServiceUi[]
+  getLastMeterReading: (roomId: string) => GroupedMeterReading | null
+  getMeterReadings: (roomId: string) => GroupedMeterReading[]
+  getTenantRooms: (tenantId: string) => Array<RoomWithStatus & { contract: ContractDto } | null>
+
+  // ── Auth actions ──
+  loginWithCredentials: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+  loginWithTelegram: () => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
+  bootstrapSession: () => Promise<void>
+  updateAuthProfile: (args: { name?: string; username?: string; phone?: string | null; profileImage?: string | null }) => Promise<void>
+  changeAuthPassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
+
+  // ── Loaders ──
+  loadInitialData: () => Promise<void>
+  loadFloors: (buildingId?: string) => Promise<void>
+  loadTenants: () => Promise<void>
+  loadAllInvoices: () => Promise<void>
+  loadInvoicesPage: (args?: { q?: string; status?: InvoiceStatusResponse; from?: string; to?: string; pageSize?: number }) => Promise<void>
+  loadInvoiceCounts: (args?: { q?: string; from?: string; to?: string }) => Promise<void>
+  resetPagedInvoices: () => void
+  loadInvoiceById: (id: string) => Promise<InvoiceUiDto | null>
+  loadBankPayments: () => Promise<void>
+  loadTelegramLinks: () => Promise<void>
+  getTelegramLinkForRoom: (roomId: string) => TelegramLinkDto | null
+  requestTelegramLinkCode: (roomId: string) => Promise<MintCodeResponse>
+  removeTelegramLink: (id: string) => Promise<void>
+  loadBankNotificationGroups: () => Promise<void>
+  requestBankNotificationGroupCode: () => Promise<MintCodeResponse>
+  removeBankNotificationGroup: (id: string) => Promise<void>
+  loadRoomInvoices: (roomId: string) => Promise<void>
+  loadRoomData: (roomId: string) => Promise<void>
+  loadLatestMeterReadings: (roomId: string) => Promise<MeterReadingLatest[]>
+  loadTenantContracts: (tenantId?: string) => Promise<void>
+
+  // ── Building CRUD ──
+  addBuilding: (data: BuildingInput) => Promise<BuildingDto>
+  updateBuilding: (id: string, data: BuildingInput) => Promise<void>
+  deleteBuilding: (id: string) => Promise<{ error: string | null }>
+
+  // ── Floor CRUD ──
+  addFloor: (data: { buildingId: string; name: string; remark?: string | null }) => Promise<FloorDto>
+  updateFloor: (id: string, data: FloorInput) => Promise<void>
+  deleteFloor: (id: string) => Promise<{ error: string | null }>
+
+  // ── Room CRUD ──
+  addRoom: (data: { floorId: string; buildingId?: string; name: string; size?: string; price: number | string }) => Promise<RoomDto>
+  updateRoom: (id: string, data: UpdateRoomArgs) => Promise<void>
+  deleteRoom: (id: string) => Promise<{ error: string | null }>
+
+  // ── Tenant CRUD ──
+  addTenant: (data: CreateTenantArgs) => Promise<TenantDto>
+  updateTenant: (id: string, data: UpdateTenantArgs) => Promise<void>
+  lookupTenantByPhone: (phone: string) => Promise<TenantDto | null>
+
+  // ── Contracts (tenant ↔ room) ──
+  addTenantToRoom: (roomId: string, data: AddTenantToRoomArgs) => Promise<ContractDto>
+  removeTenantFromRoom: (contractId: string, reason?: string) => Promise<void>
+  updateContract: (contractId: string, data: UpdateContractArgs) => Promise<void>
+
+  // ── Room services ──
+  setRoomServices: (roomId: string, services: RoomServiceInput[]) => Promise<void>
+
+  // ── Meter readings ──
+  addMeterReading: (roomId: string, data: AddMeterReadingInput) => Promise<void>
+
+  // ── Invoices ──
+  createInvoice: (data: CreateInvoiceFormInput) => Promise<InvoiceUiDto>
+  markInvoicePaid: (invoiceId: string, method: InvoicePaymentMethodWire) => Promise<void>
+  cancelInvoice: (invoiceId: string, reason?: string) => Promise<void>
+  getInvoicePdfUrl: () => Promise<string | null>
+
+  // ── Service fees ──
+  addMasterService: (data: CreateServiceFeeArgs) => Promise<ServiceFeeDto>
+  updateMasterService: (id: string, data: UpdateServiceFeeArgs) => Promise<void>
+  deleteMasterService: (id: string) => Promise<{ error: string | null }>
+
+  // ── Settings ──
+  updateExchangeRate: (rate: number | string) => Promise<void>
+  setLanguage: (lang: string) => void
+  updateInvoiceSettings: <K extends keyof InvoiceSettings>(section: K, data: Partial<InvoiceSettings[K]>) => Promise<void>
+
+  // ── Sub-users ──
+  loadSubUsers: () => Promise<void>
+  addSubUser: (data: CreateSubUserArgs) => Promise<UserDto>
+  updateSubUser: (id: string, data: UpdateSubUserArgs) => Promise<void>
+  deleteSubUser: (id: string) => Promise<void>
+}
+
+// ── Implementation ─────────────────────────────────────────────────────────
+
+function toAuthUser(u: UserDto | AuthResponse['user']): AuthUser {
+  return {
+    id: u.id,
+    name: u.name,
+    username: u.username || '',
+    phone: u.phone || '',
+    profileImage: u.profileImage ?? null,
+    role: (u.role || 'manager').toLowerCase(),
+    via: u.via || 'credentials',
+  }
+}
+
+export const useStore = create<StoreState>()((set, get) => ({
 
   // ── Auth ──
   token: getToken(),
@@ -32,12 +276,9 @@ export const useStore = create((set, get) => ({
   masterServices: [],
   roomServices: [],
   meterReadings: [],
-  latestMeterReadings: {}, // { roomId: [{ serviceType, previousReading, currentReading, autoFilled, lastRecordDate }] }
+  latestMeterReadings: {},
   invoices: [],
 
-  // Paginated state for the Billing tab. Separate from the `invoices` cache,
-  // which other pages still rely on as a flat all-rows array.
-  // lastQueryKey is the serialized filter signature; when it changes we reset.
   pagedInvoices: {
     items: [],
     total: 0,
@@ -49,9 +290,11 @@ export const useStore = create((set, get) => ({
   },
 
   exchangeRate: 4000,
-  language: getStoredLanguage(),
+  // getStoredLanguage returns string|null because it reads localStorage; at
+  // runtime the unsupported-value branch always returns 'en', but TS can't
+  // narrow through Array.includes. Fall back to 'en' to satisfy the type.
+  language: getStoredLanguage() || 'en',
 
-  // ── Loading + error ──
   loading: {},
   error: null,
 
@@ -68,13 +311,14 @@ export const useStore = create((set, get) => ({
   },
 
   _onAuthFailure(err) {
-    if (err?.status === 401) {
+    const status = (err as { status?: number } | null | undefined)?.status
+    if (status === 401) {
       setToken(null)
       set({ isLoggedIn: false, token: null, authUser: null })
     }
   },
 
-  // ── Selectors (unchanged from before) ──────────────────────────────────────
+  // ── Selectors ──────────────────────────────────────────────────────────────
 
   getActiveContract(roomId) {
     return get().contracts.find(c => c.roomId === roomId && c.status === 'active') || null
@@ -87,7 +331,7 @@ export const useStore = create((set, get) => ({
     const contract = contracts.find(c => c.roomId === roomId && c.status === 'active') || null
     const tenant = contract
       ? { id: contract.tenantId, name: contract.tenantName, phone: contract.tenantPhone }
-      : (room.occupied ? { name: room.tenantName } : null)
+      : (room.occupied && room.tenantName ? { name: room.tenantName } : null)
     const floor    = floors.find(f => f.id === room.floorId)
     const building = buildings.find(b => b.id === room.buildingId)
     return { room, contract, tenant, floor, building, occupied: room.occupied || !!contract }
@@ -98,20 +342,21 @@ export const useStore = create((set, get) => ({
   },
 
   resolveInvoice(inv) {
-    return { ...inv, status: resolveInvoiceStatus(inv.status, inv.dueDate) }
+    // resolveInvoiceStatus is still JS; cast the narrowed string back to the union.
+    return { ...inv, status: resolveInvoiceStatus(inv.status, inv.dueDate) as InvoiceStatusResponse }
   },
 
   getInvoicesByRoom(roomId) {
     return get().invoices
       .filter(inv => inv.roomId === roomId)
       .map(inv => get().resolveInvoice(inv))
-      .sort((a, b) => new Date(b.periodStart) - new Date(a.periodStart))
+      .sort((a, b) => new Date(b.periodStart).getTime() - new Date(a.periodStart).getTime())
   },
 
   getAllInvoices() {
     return get().invoices
       .map(inv => get().resolveInvoice(inv))
-      .sort((a, b) => new Date(b.periodStart) - new Date(a.periodStart))
+      .sort((a, b) => new Date(b.periodStart).getTime() - new Date(a.periodStart).getTime())
   },
 
   getInvoiceById(id) {
@@ -136,7 +381,7 @@ export const useStore = create((set, get) => ({
         priceOverride: rs.priceOverride,
         name: rs.serviceName,
         icon: rs.serviceIcon,
-        type: rs.serviceType === 'FIXED' ? 'fixed' : 'utility',
+        type: (rs.serviceType === 'FIXED' ? 'fixed' : 'utility') as 'fixed' | 'utility',
         serviceType: rs.serviceType,
         unitLabel: rs.unit ? `$/${rs.unit}` : '$/mo',
         effectiveRate: rs.effectiveRate,
@@ -147,19 +392,22 @@ export const useStore = create((set, get) => ({
   getLastMeterReading(roomId) {
     return get().meterReadings
       .filter(r => r.roomId === roomId)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))[0] || null
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
   },
 
   getMeterReadings(roomId) {
     return get().meterReadings
       .filter(r => r.roomId === roomId)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   },
 
   getTenantRooms(tenantId) {
     return get().contracts
       .filter(c => c.tenantId === tenantId)
-      .map(c => ({ ...get().getRoomWithStatus(c.roomId), contract: c }))
+      .map(c => {
+        const row = get().getRoomWithStatus(c.roomId)
+        return row ? { ...row, contract: c } : null
+      })
   },
 
   // ── Auth actions ───────────────────────────────────────────────────────────
@@ -170,30 +418,20 @@ export const useStore = create((set, get) => ({
     try {
       const data = await authApi.loginWithCredentials(username, password)
       setToken(data.token)
-      set({
-        isLoggedIn: true,
-        token: data.token,
-        authUser: {
-          id: data.user.id,
-          name: data.user.name,
-          username: data.user.username || '',
-          phone: data.user.phone || '',
-          profileImage: data.user.profileImage ?? null,
-          role: (data.user.role || 'manager').toLowerCase(),
-          via: data.user.via || 'credentials',
-        },
-      })
+      set({ isLoggedIn: true, token: data.token, authUser: toAuthUser(data.user) })
       get().loadInitialData().catch(() => {})
       return { success: true }
     } catch (e) {
-      return { success: false, error: e.message || 'Invalid phone or password' }
+      return { success: false, error: (e as Error).message || 'Invalid phone or password' }
     } finally {
       get()._setLoading('login', false)
     }
   },
 
   async loginWithTelegram() {
-    const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null
+    const tg = typeof window !== 'undefined'
+      ? (window as { Telegram?: { WebApp?: { initData?: string; initDataUnsafe?: { user?: { first_name: string; last_name?: string } } } } }).Telegram?.WebApp
+      : null
     const initData = tg?.initData
 
     // Outside Telegram (dev) → fall back to local-only stub so the UI still works.
@@ -218,20 +456,12 @@ export const useStore = create((set, get) => ({
       set({
         isLoggedIn: true,
         token: data.token,
-        authUser: {
-          id: data.user.id,
-          name: data.user.name,
-          username: data.user.username || '',
-          phone: data.user.phone || '',
-          profileImage: data.user.profileImage ?? null,
-          role: (data.user.role || 'manager').toLowerCase(),
-          via: 'telegram',
-        },
+        authUser: { ...toAuthUser(data.user), via: 'telegram' },
       })
       get().loadInitialData().catch(() => {})
       return { success: true }
     } catch (e) {
-      return { success: false, error: e.message || 'Telegram login failed' }
+      return { success: false, error: (e as Error).message || 'Telegram login failed' }
     } finally {
       get()._setLoading('login', false)
     }
@@ -256,17 +486,7 @@ export const useStore = create((set, get) => ({
     if (!get().token || get().authUser) return
     try {
       const u = await authApi.getProfile()
-      set({
-        authUser: {
-          id: u.id,
-          name: u.name,
-          username: u.username || '',
-          phone: u.phone || '',
-          profileImage: u.profileImage ?? null,
-          role: (u.role || 'manager').toLowerCase(),
-          via: u.via || 'credentials',
-        },
-      })
+      set({ authUser: toAuthUser(u) })
     } catch (e) {
       get()._onAuthFailure(e)
     }
@@ -276,24 +496,21 @@ export const useStore = create((set, get) => ({
     const { authUser } = get()
     if (!authUser) return
     try {
-      const updated = await authApi.updateProfile({
-        fullName: name,
-        ...(username !== undefined     ? { username }     : {}),
-        phone,
-        ...(profileImage !== undefined ? { profileImage } : {}),
-      })
+      const args: UpdateProfileArgs = { phone: phone ?? undefined }
+      if (name !== undefined) args.fullName = name
+      if (username !== undefined) args.username = username
+      if (profileImage !== undefined) args.profileImage = profileImage
+      const updated = await authApi.updateProfile(args)
       set({
         authUser: {
           ...authUser,
-          name: updated.name || name,
+          name: updated.name || name || authUser.name,
           username: updated.username || username || authUser.username,
-          phone: updated.phone || phone,
-          profileImage: updated.profileImage ?? profileImage,
+          phone: updated.phone || phone || authUser.phone || '',
+          profileImage: updated.profileImage ?? profileImage ?? authUser.profileImage,
         },
       })
     } catch (e) {
-      // On username conflict / validation error, surface the message — DO NOT
-      // optimistically apply the change locally (that would mislead the user).
       get()._onAuthFailure(e)
       throw e
     }
@@ -304,7 +521,7 @@ export const useStore = create((set, get) => ({
       await authApi.changePassword(currentPassword, newPassword)
       return { success: true }
     } catch (e) {
-      return { success: false, error: e.message || 'Password change failed' }
+      return { success: false, error: (e as Error).message || 'Password change failed' }
     }
   },
 
@@ -323,7 +540,7 @@ export const useStore = create((set, get) => ({
       ])
 
       // Derive floors from rooms (each room carries floorId+floorName) — saves a request
-      const seenFloors = new Map()
+      const seenFloors = new Map<string, FloorDto>()
       for (const r of rooms) {
         if (r.floorId && !seenFloors.has(r.floorId)) {
           seenFloors.set(r.floorId, { id: r.floorId, buildingId: r.buildingId, name: r.floorName || '', remark: '' })
@@ -339,7 +556,7 @@ export const useStore = create((set, get) => ({
       // Background loads (non-blocking)
       get().loadSubUsers().catch(() => {})
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
       get()._onAuthFailure(e)
     } finally {
       get()._setLoading('init', false)
@@ -353,7 +570,7 @@ export const useStore = create((set, get) => ({
         floors: [...s.floors.filter(f => f.buildingId !== buildingId), ...data],
       }))
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     }
   },
 
@@ -363,7 +580,7 @@ export const useStore = create((set, get) => ({
       const data = await tenantsApi.list()
       set({ tenants: data })
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     } finally {
       get()._setLoading('tenants', false)
     }
@@ -375,7 +592,7 @@ export const useStore = create((set, get) => ({
       const data = await invoicesApi.list()
       set({ invoices: data.map(adaptInvoice) })
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     } finally {
       get()._setLoading('invoices', false)
     }
@@ -408,7 +625,7 @@ export const useStore = create((set, get) => ({
         },
       }))
     } catch (e) {
-      set(s => ({ pagedInvoices: { ...s.pagedInvoices, loading: false }, error: e.message }))
+      set(s => ({ pagedInvoices: { ...s.pagedInvoices, loading: false }, error: (e as Error).message }))
     }
   },
 
@@ -417,7 +634,7 @@ export const useStore = create((set, get) => ({
       const counts = await invoicesApi.listCounts({ q, from, to })
       set(s => ({ pagedInvoices: { ...s.pagedInvoices, byStatus: { ...s.pagedInvoices.byStatus, ...counts } } }))
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     }
   },
 
@@ -448,7 +665,7 @@ export const useStore = create((set, get) => ({
       })
       return adapted
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
       return null
     }
   },
@@ -459,7 +676,7 @@ export const useStore = create((set, get) => ({
       const data = await bankPaymentsApi.list()
       set({ bankPayments: Array.isArray(data) ? data : [] })
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     } finally {
       get()._setLoading('bankPayments', false)
     }
@@ -471,7 +688,7 @@ export const useStore = create((set, get) => ({
       const data = await telegramLinksApi.list()
       set({ telegramLinks: Array.isArray(data) ? data : [] })
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     } finally {
       get()._setLoading('telegramLinks', false)
     }
@@ -497,7 +714,7 @@ export const useStore = create((set, get) => ({
       const data = await bankNotificationGroupsApi.list()
       set({ bankNotificationGroups: Array.isArray(data) ? data : [] })
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     } finally {
       get()._setLoading('bankNotificationGroups', false)
     }
@@ -518,7 +735,7 @@ export const useStore = create((set, get) => ({
       const adapted = data.map(adaptInvoice)
       set(s => ({ invoices: [...s.invoices.filter(inv => inv.roomId !== roomId), ...adapted] }))
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     }
   },
 
@@ -537,7 +754,7 @@ export const useStore = create((set, get) => ({
         meterReadings: [...s.meterReadings.filter(r => r.roomId !== roomId), ...grouped],
       }))
     } catch (e) {
-      set({ error: e.message })
+      set({ error: (e as Error).message })
     } finally {
       get()._setLoading(`room_${roomId}`, false)
     }
@@ -581,7 +798,7 @@ export const useStore = create((set, get) => ({
       }))
       return { error: null }
     } catch (e) {
-      return { error: e.message }
+      return { error: (e as Error).message }
     }
   },
 
@@ -607,7 +824,7 @@ export const useStore = create((set, get) => ({
       }))
       return { error: null }
     } catch (e) {
-      return { error: e.message }
+      return { error: (e as Error).message }
     }
   },
 
@@ -630,7 +847,7 @@ export const useStore = create((set, get) => ({
       set(s => ({ rooms: s.rooms.filter(r => r.id !== id) }))
       return { error: null }
     } catch (e) {
-      return { error: e.message }
+      return { error: (e as Error).message }
     }
   },
 
@@ -734,7 +951,7 @@ export const useStore = create((set, get) => ({
     const recordedByName = get().authUser?.name || 'Manager'
     const recordDate = data.date
 
-    const ops = []
+    const ops: Array<Promise<unknown>> = []
     if (data.waterCurrent != null) {
       ops.push(meterReadingsApi.create(roomId, {
         serviceType: 'WATER',
@@ -775,7 +992,7 @@ export const useStore = create((set, get) => ({
     if (!isAutoMode) {
       const recordedByName = get().authUser?.name || 'Manager'
       const today = new Date().toISOString().split('T')[0]
-      const meterOps = []
+      const meterOps: Array<Promise<unknown>> = []
       if (data.waterCurrent != null) {
         meterOps.push(meterReadingsApi.create(data.roomId, {
           serviceType: 'WATER',
@@ -803,8 +1020,8 @@ export const useStore = create((set, get) => ({
 
     // Refresh room (canStartBill flips false)
     try {
-      const room = await roomsApi.get(data.roomId)
-      set(s => ({ rooms: s.rooms.map(r => r.id === data.roomId ? room : r) }))
+      const refreshed = await roomsApi.get(data.roomId)
+      set(s => ({ rooms: s.rooms.map(r => r.id === data.roomId ? refreshed : r) }))
     } catch { /* noop */ }
 
     return adapted
@@ -860,7 +1077,7 @@ export const useStore = create((set, get) => ({
       }))
       return { error: null }
     } catch (e) {
-      return { error: e.message }
+      return { error: (e as Error).message }
     }
   },
 
@@ -868,7 +1085,7 @@ export const useStore = create((set, get) => ({
 
   async updateExchangeRate(rate) {
     await settingsApi.update({ KHR_EXCHANGE_RATE: String(rate) })
-    set({ exchangeRate: parseFloat(rate) || 0 })
+    set({ exchangeRate: parseFloat(String(rate)) || 0 })
   },
 
   setLanguage(lang) {
@@ -883,22 +1100,23 @@ export const useStore = create((set, get) => ({
     }))
 
     // Map nested → flat key/value for backend
-    const updated = { ...get().invoiceSettings[section] }
-    const kv = {}
+    const updated = { ...get().invoiceSettings[section] } as Record<string, unknown>
+    const kv: Record<string, string> = {}
+    const d = data as Record<string, unknown>
     if (section === 'header') {
-      if ('enabled' in data)  kv.INVOICE_HEADER_ENABLED = String(updated.enabled)
-      if ('bizName' in data)  kv.INVOICE_BIZ_NAME       = updated.bizName  || ''
-      if ('tinNo' in data)    kv.INVOICE_TIN_NO         = updated.tinNo    || ''
-      if ('address' in data)  kv.INVOICE_ADDRESS        = updated.address  || ''
-      if ('bizPhone' in data) kv.INVOICE_BIZ_PHONE      = updated.bizPhone || ''
+      if ('enabled' in d)  kv.INVOICE_HEADER_ENABLED = String(updated.enabled)
+      if ('bizName' in d)  kv.INVOICE_BIZ_NAME       = String(updated.bizName  || '')
+      if ('tinNo' in d)    kv.INVOICE_TIN_NO         = String(updated.tinNo    || '')
+      if ('address' in d)  kv.INVOICE_ADDRESS        = String(updated.address  || '')
+      if ('bizPhone' in d) kv.INVOICE_BIZ_PHONE      = String(updated.bizPhone || '')
     } else if (section === 'footer') {
-      if ('enabled' in data) kv.INVOICE_FOOTER_ENABLED = String(updated.enabled)
-      if ('note' in data)    kv.INVOICE_FOOTER_NOTE    = updated.note || ''
+      if ('enabled' in d) kv.INVOICE_FOOTER_ENABLED = String(updated.enabled)
+      if ('note' in d)    kv.INVOICE_FOOTER_NOTE    = String(updated.note || '')
     } else if (section === 'body') {
-      if ('invoiceNoDigits' in data) kv.INVOICE_NO_DIGITS = String(updated.invoiceNoDigits)
+      if ('invoiceNoDigits' in d) kv.INVOICE_NO_DIGITS = String(updated.invoiceNoDigits)
     } else if (section === 'qr') {
-      if ('enabled' in data)  kv.INVOICE_QR_ENABLED = String(updated.enabled)
-      if ('qrString' in data) kv.INVOICE_QR_STRING  = updated.qrString || ''
+      if ('enabled' in d)  kv.INVOICE_QR_ENABLED = String(updated.enabled)
+      if ('qrString' in d) kv.INVOICE_QR_STRING  = String(updated.qrString || '')
     }
 
     if (Object.keys(kv).length) {
@@ -914,7 +1132,8 @@ export const useStore = create((set, get) => ({
       set({ subUsers: data })
     } catch (e) {
       // 403 is expected for non-owner/manager roles — silently ignore
-      if (e?.status !== 403) set({ error: e.message })
+      const status = (e as { status?: number } | null | undefined)?.status
+      if (status !== 403) set({ error: (e as Error).message })
     }
   },
 

@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import PageHeader from '../components/layout/PageHeader'
 import { useT } from '../lib/i18n'
 import { resizeImageToBlob } from '../lib/image'
-import { uploadsApi } from '../sdk.js'
+import { uploadsApi } from '../sdk'
 import { Camera, Eye, EyeOff, Check } from 'lucide-react'
 
 const ROLE_KEY = { owner: 'more.role.owner', manager: 'more.role.manager', staff: 'more.role.staff', viewer: 'more.role.viewer' }
