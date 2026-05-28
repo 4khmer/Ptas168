@@ -192,6 +192,31 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Cloudflare Quick Tunnel — opt-in via the `tunnel` profile so the normal
+  # `pnpm compose:up` doesn't spin up a public URL by surprise. Starts a
+  # throwaway *.trycloudflare.com URL valid until the container stops; the
+  # URL itself is printed on stdout (`docker logs ptas168_cloudflared` or
+  # `pnpm compose:tunnel:url`). No Cloudflare account, no domain, no token.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ptas168_cloudflared
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    # Point at the frontend service over the compose network. Nginx forwards
+    # /api → backend, so a single tunnel covers both the SPA and the API.
+    # `--protocol http2` avoids QUIC/UDP which many home/office networks
+    # block outbound on port 7844 (you'll see "failed to dial to edge with
+    # quic" in the logs if you remove this).
+    command: tunnel --no-autoupdate --protocol http2 --url http://frontend:80
+    depends_on:
+      frontend:
+        condition: service_started
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres_data:
     name: ptas168_postgres_data
