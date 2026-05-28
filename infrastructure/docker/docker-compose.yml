@@ -218,16 +218,19 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: ptas168_cloudflared
     restart: unless-stopped
-    profiles: ["tunnel"]
-    # Point at the frontend service over the compose network. Nginx forwards
-    # /api → backend, so a single tunnel covers both the SPA and the API.
-    # `--protocol http2` avoids QUIC/UDP which many home/office networks
-    # block outbound on port 7844 (you'll see "failed to dial to edge with
-    # quic" in the logs if you remove this).
-    command: tunnel --no-autoupdate --protocol http2 --url http://frontend:80
-    depends_on:
-      frontend:
-        condition: service_started
+    # Named tunnel mode — routes ptas168.4khmerapp.xyz and pos168.4khmerapp.xyz
+    # to their respective frontend containers via host ports.
+    # network_mode: host lets cloudflared reach localhost:8080 (ptas168) and
+    # localhost:8081 (pos168) which live in separate docker-compose projects.
+    #
+    # To activate: place your creds.json in infrastructure/docker/cloudflared/
+    # and replace REPLACE_WITH_YOUR_TUNNEL_ID in cloudflared/config.yml.
+    #
+    # Quick tunnel (no account/domain) is no longer used. If you need a
+    # throwaway URL for local testing use:
+    #   docker run --rm cloudflare/cloudflared tunnel --url http://host.docker.internal:8080
+    command: tunnel --no-autoupdate --protocol http2 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    network_mode: host
     logging:
       driver: json-file
       options:
