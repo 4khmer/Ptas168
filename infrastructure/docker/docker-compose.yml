@@ -218,7 +218,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: ptas168_cloudflared
     restart: unless-stopped
-    # Named tunnel mode — routes ptas168.4khmerapp.xyz and pos168.4khmerapp.xyz
+    # Named tunnel mode — routes ptas168.kilozin.xyz and pos168.kilozin.xyz
     # to their respective frontend containers via host ports.
     # network_mode: host lets cloudflared reach localhost:8080 (ptas168) and
     # localhost:8081 (pos168) which live in separate docker-compose projects.
@@ -229,8 +229,11 @@ services:
     # Quick tunnel (no account/domain) is no longer used. If you need a
     # throwaway URL for local testing use:
     #   docker run --rm cloudflare/cloudflared tunnel --url http://host.docker.internal:8080
-    command: tunnel --no-autoupdate --protocol http2 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     network_mode: host
+    command: tunnel --no-autoupdate --protocol http2 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      frontend:
+        condition: service_started
     logging:
       driver: json-file
       options:

@@ -27,7 +27,7 @@ export const updateServiceFeeSchema = z
   .strict()
 export type UpdateServiceFeeInput = z.infer<typeof updateServiceFeeSchema>
 
-// Read DTO ──────────────────────────────────────────────────────────────────
+// Read DTO ───────────────────────────────────────────────────────────────
 // `type` is DERIVED in the adapter from `serviceType` (WATER/ELECTRICITY ⇒
 // 'utility', else 'fixed'). `unitLabel` is `$/${unit}`. `canDelete` mirrors
 // the `deletable` DB column — system-seeded Water/Electricity return false.
